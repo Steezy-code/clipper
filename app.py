@@ -42,6 +42,7 @@ async def upload(file: UploadFile = File(...),
                  aspect: str = Form("9:16"),
                  caption_style: str = Form("karaoke"),
                  length: str = Form("auto"),
+                 trim: str = Form("1"),
                  num_clips: str = Form(None)) -> JSONResponse:
     if not file.filename:
         raise HTTPException(400, "No file provided.")
@@ -51,7 +52,7 @@ async def upload(file: UploadFile = File(...),
         shutil.copyfileobj(file.file, out)
     job_cfg = replace(base_cfg, **validate_overrides(
         {"aspect": aspect, "caption_style": caption_style, "length": length,
-         "num_clips": num_clips}))
+         "trim": trim, "num_clips": num_clips}))
     JOBS[job_id] = {"status": "running", "percent": 0, "message": "Queued",
                     "clips": [], "error": None}
     threading.Thread(target=_run, args=(job_id, str(dest), job_cfg), daemon=True).start()

@@ -90,6 +90,9 @@
     background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:9px 12px}
   #numClips{width:74px}
   #capStyle:focus,#length:focus,#numClips:focus{outline:2px solid var(--accent);outline-offset:1px}
+  .chk{display:inline-flex;align-items:center;gap:8px;font-size:14px;color:var(--text);
+    background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:9px 12px;cursor:pointer}
+  .chk input{accent-color:var(--accent);width:16px;height:16px;cursor:pointer}
   .badge-score{font-family:var(--display);font-weight:600;font-size:11px;border-radius:999px;
     padding:3px 9px;letter-spacing:.02em}
   .s-hi{background:rgba(61,220,151,.16);color:var(--done)}
@@ -221,6 +224,10 @@
       <span class="clab">Clips</span>
       <input type="number" id="numClips" min="1" max="12" value="6" />
     </div>
+    <div class="ctrl">
+      <span class="clab">Trim</span>
+      <label class="chk"><input type="checkbox" id="trim" checked /> Silence</label>
+    </div>
   </div>
 
   <section id="run" class="hidden">
@@ -314,6 +321,7 @@ async function start(file){
   fd.append("caption_style", document.getElementById("capStyle").value);
   fd.append("length", document.getElementById("length").value);
   fd.append("num_clips", document.getElementById("numClips").value);
+  fd.append("trim", document.getElementById("trim").checked ? "1" : "0");
   let job;
   try{
     const res = await fetch("/api/upload", {method:"POST", body:fd});

@@ -35,6 +35,11 @@ class Config:
     min_clip_s: float = _env_float("MIN_CLIP_S", 15.0)
     max_clip_s: float = _env_float("MAX_CLIP_S", 60.0)
 
+    # --- Silence trimming ---
+    trim_silence: bool = os.environ.get("TRIM_SILENCE", "1") == "1"
+    silence_max: float = _env_float("SILENCE_MAX", 0.5)    # collapse gaps longer than this
+    silence_keep: float = _env_float("SILENCE_KEEP", 0.15)  # pad left around each cut
+
     # --- Reframe / face tracking ---
     target_w: int = _env_int("TARGET_W", 1080)   # output width  (9:16)
     target_h: int = _env_int("TARGET_H", 1920)   # output height
@@ -86,6 +91,8 @@ def validate_overrides(form: dict) -> dict:
         out["caption_style"] = form["caption_style"]
     if form.get("length") in LENGTHS:
         out["min_clip_s"], out["max_clip_s"] = LENGTHS[form["length"]]
+    if form.get("trim") is not None:
+        out["trim_silence"] = form["trim"] == "1"
     n = form.get("num_clips")
     if n is not None:
         try:

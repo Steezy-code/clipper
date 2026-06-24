@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Callable
 
 from .config import Config
-from . import ffmpeg_util, transcribe, score, crop, captions
+from . import ffmpeg_util, transcribe, score, crop, captions, trim
 
 Progress = Callable[[int, str], None]
 
@@ -13,17 +13,6 @@ Progress = Callable[[int, str], None]
 def _slug(text: str, fallback: str) -> str:
     s = re.sub(r"[^a-zA-Z0-9]+", "-", text).strip("-").lower()
     return s[:40] or fallback
-
-
-def _clip_words(words: list[dict], start: float, end: float) -> list[dict]:
-    out = []
-    for w in words:
-        if w["end"] <= start or w["start"] >= end:
-            continue
-        out.append({"word": w["word"],
-                    "start": max(0.0, w["start"] - start),
-                    "end": max(0.0, w["end"] - start)})
-    return out
 
 
 def process(media_path: str, cfg: Config, on_progress: Progress = lambda p, m: None) -> list[dict]:
@@ -49,11 +38,20 @@ def process(media_path: str, cfg: Config, on_progress: Progress = lambda p, m: N
         name = f"{i+1:02d}-{_slug(clip['title'], f'clip-{i+1}')}"
         on_progress(base, f"Cutting clip {i+1} of {len(clips)}")
 
-        seg = ffmpeg_util.cut(media_path, clip["start"], clip["end"],
-                              str(work / f"{name}-seg.mp4"), codec=cfg.video_codec)
+        abs_words = [w for w in transcript["words"]
+                     if w["end"] > clip["start"] and w["start"] < clip["end"]]
+        spans = (trim.keep_spans(abs_words, clip["start"], clip["end"], cfg)
+                 if cfg.trim_silence else [(clip["start"], clip["end"])])
+        segpath = str(work / f"{name}-seg.mp4")
+        if len(spans) == 1:
+            seg = ffmpeg_util.cut(media_path, spans[0][0], spans[0][1], segpath, codec=cfg.video_codec)
+        else:
+            rel = [(a - clip["start"], b - clip["start"]) for a, b in spans]
+            seg = ffmpeg_util.cut_spans(media_path, clip["start"], clip["end"], rel,
+                                        segpath, codec=cfg.video_codec)
 
         on_progress(base + int(span * 0.4), f"Captioning clip {i+1}")
-        cw = _clip_words(transcript["words"], clip["start"], clip["end"])
+        cw = trim.remap(abs_words, spans)
         ass = captions.write_ass(cw, str(work / f"{name}.ass"), cfg, hook=clip.get("hook", ""))
 
         # reframe burns the captions in the same encode pass (no separate caption round trip)

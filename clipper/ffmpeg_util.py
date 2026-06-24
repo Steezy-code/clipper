@@ -50,6 +50,29 @@ def cut(src: str, start: float, end: float, dst: str, codec: str = "libx264") ->
     return dst
 
 
+def cut_spans(src: str, start: float, end: float, rel_spans: list[tuple[float, float]],
+              dst: str, codec: str = "libx264") -> str:
+    """Cut [start, end] keeping only rel_spans (clip-relative), concatenated - used to drop
+    silence. Fast input seek to the clip window first, so only the clip is decoded; trim +
+    concat keep audio and video sample-accurate.
+    """
+    preset = ["-preset", "fast"] if "nvenc" in codec else ["-preset", "veryfast"]
+    parts = []
+    for i, (a, b) in enumerate(rel_spans):
+        parts.append(f"[0:v]trim={a:.3f}:{b:.3f},setpts=PTS-STARTPTS[v{i}]")
+        parts.append(f"[0:a]atrim={a:.3f}:{b:.3f},asetpts=PTS-STARTPTS[a{i}]")
+    n = len(rel_spans)
+    parts.append("".join(f"[v{i}][a{i}]" for i in range(n)) + f"concat=n={n}:v=1:a=1[v][a]")
+    Path(dst).parent.mkdir(parents=True, exist_ok=True)
+    subprocess.run(
+        ["ffmpeg", "-y", "-ss", f"{start:.3f}", "-i", src, "-t", f"{end - start:.3f}",
+         "-filter_complex", ";".join(parts), "-map", "[v]", "-map", "[a]",
+         "-c:v", codec, *preset, "-c:a", "aac", "-movflags", "+faststart", dst],
+        capture_output=True, check=True,
+    )
+    return dst
+
+
 def even(n: int) -> int:
     """h264 needs even dimensions."""
     n = int(round(n))

@@ -26,6 +26,43 @@ def test_validate_overrides_length():
     assert validate_overrides({"length": "bogus"}) == {}
 
 
+def test_validate_overrides_trim():
+    from clipper.config import validate_overrides
+    assert validate_overrides({"trim": "0"}) == {"trim_silence": False}
+    assert validate_overrides({"trim": "1"}) == {"trim_silence": True}
+    assert validate_overrides({}) == {}
+
+
+def test_keep_spans_and_remap():
+    from clipper.trim import keep_spans, remap
+    from clipper.config import Config
+    cfg = Config()  # silence_max 0.5, silence_keep 0.15
+    words = [
+        {"word": "a", "start": 10.0, "end": 10.3},
+        {"word": "b", "start": 10.3, "end": 10.6},
+        {"word": "c", "start": 12.6, "end": 12.9},   # 2.0s gap before this
+        {"word": "d", "start": 12.9, "end": 13.2},
+    ]
+    spans = keep_spans(words, 10.0, 13.5, cfg)
+    assert len(spans) == 2, spans                      # the gap split the clip
+    assert sum(b - a for a, b in spans) < 3.5          # time was removed
+    rm = remap(words, spans)
+    assert len(rm) == 4 and rm[0]["start"] < 0.2       # starts near zero
+    for i in range(1, len(rm)):
+        assert rm[i]["start"] - rm[i - 1]["end"] < 0.5  # no dead air left on new timeline
+        assert rm[i]["start"] >= rm[i - 1]["start"]     # monotonic
+
+
+def test_keep_spans_no_gaps_single_span():
+    from clipper.trim import keep_spans, remap
+    from clipper.config import Config
+    cfg = Config()
+    words = [{"word": "a", "start": 5.0, "end": 5.4}, {"word": "b", "start": 5.4, "end": 5.8}]
+    spans = keep_spans(words, 5.0, 6.0, cfg)
+    assert len(spans) == 1                              # gapless -> one span
+    assert remap(words, spans)[0]["start"] < 0.2
+
+
 def test_clean_score_hook_sort():
     from clipper.score import _clean
     from clipper.config import Config
