@@ -55,13 +55,15 @@ def process(media_path: str, cfg: Config, on_progress: Progress = lambda p, m: N
 
         on_progress(base + int(span * 0.7), f"Captioning clip {i+1}")
         cw = _clip_words(transcript["words"], clip["start"], clip["end"])
-        ass = captions.write_ass(cw, str(work / f"{name}.ass"), cfg)
+        ass = captions.write_ass(cw, str(work / f"{name}.ass"), cfg, hook=clip.get("hook", ""))
         final = captions.burn(vert, ass, str(out / f"{name}.mp4"), cfg)
 
         results.append({
             "file": Path(final).name,
             "title": clip["title"],
+            "hook": clip.get("hook", clip["title"]),
             "reason": clip["reason"],
+            "score": clip.get("score", 50),
             "start": clip["start"],
             "end": clip["end"],
             "length": round(clip["end"] - clip["start"], 1),
