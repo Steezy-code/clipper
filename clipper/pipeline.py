@@ -56,7 +56,8 @@ def process(media_path: str, cfg: Config, on_progress: Progress = lambda p, m: N
 
         # reframe burns the captions in the same encode pass (no separate caption round trip)
         on_progress(base + int(span * 0.7), f"Reframing clip {i+1}")
-        final = crop.reframe(seg, str(out / f"{name}.mp4"), cfg, ass_path=ass)
+        zoom_at = captions.emphasis_times(cw, cfg) if cfg.punch_zoom else None
+        final = crop.reframe(seg, str(out / f"{name}.mp4"), cfg, ass_path=ass, zoom_at=zoom_at)
 
         results.append({
             "file": Path(final).name,

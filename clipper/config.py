@@ -46,6 +46,11 @@ class Config:
     detect_every: int = _env_int("DETECT_EVERY", 6)   # run face detect every N frames
     smooth_alpha: float = _env_float("SMOOTH_ALPHA", 0.12)  # lower = smoother/laggier
 
+    # --- Punch-in zoom (subtle motion on emphasis) ---
+    punch_zoom: bool = os.environ.get("PUNCH_ZOOM", "1") == "1"
+    zoom_amount: float = _env_float("ZOOM_AMOUNT", 0.08)   # max extra zoom at a punch (8%)
+    zoom_gap: float = _env_float("ZOOM_GAP", 2.5)          # min seconds between punches
+
     # --- Captions ---
     accent_hex: str = os.environ.get("ACCENT_HEX", "#FF5C38")  # active word color
     base_hex: str = os.environ.get("BASE_HEX", "#FFFFFF")      # inactive words

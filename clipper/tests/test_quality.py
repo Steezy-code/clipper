@@ -63,6 +63,27 @@ def test_keep_spans_no_gaps_single_span():
     assert remap(words, spans)[0]["start"] < 0.2
 
 
+def test_zoom_track():
+    from clipper.crop import _zoom_track
+    from clipper.config import Config
+    cfg = Config()  # zoom_amount 0.08, zoom_gap 2.5
+    fps, n = 30, 300  # 10s
+    z = _zoom_track(n, fps, [1.0, 1.2, 5.0], cfg)  # 1.2 is within 2.5s of 1.0 -> skipped
+    cap = 1.0 + cfg.zoom_amount
+    assert z.min() >= 1.0 and z.max() <= cap + 1e-9   # stays in [1, 1+amount]
+    assert z[0] == 1.0                                  # opens unzoomed
+    assert z[30] > 1.0 + cfg.zoom_amount * 0.8          # peak at t=1.0
+    assert z[150] > 1.0 + cfg.zoom_amount * 0.8         # peak at t=5.0
+    assert z[90] < 1.01                                 # back to rest between punches (t=3.0)
+
+
+def test_zoom_track_off():
+    from clipper.crop import _zoom_track
+    from clipper.config import Config
+    z = _zoom_track(100, 30, None, Config())
+    assert z.max() == 1.0 and z.min() == 1.0           # no triggers -> no zoom
+
+
 def test_clean_score_hook_sort():
     from clipper.score import _clean
     from clipper.config import Config

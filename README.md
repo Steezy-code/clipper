@@ -69,6 +69,8 @@ Most things are now in the UI. For the rest, set environment variables before la
 | `DETECT_EVERY` | `6` | Run face detection every N frames. Higher = faster, slightly less precise tracking. |
 | `TRIM_SILENCE` | `1` | Remove dead air between words. Set `0` to keep pauses (e.g. for music). |
 | `SILENCE_MAX` | `0.5` | Gaps longer than this (seconds) get collapsed when trimming. |
+| `PUNCH_ZOOM` | `1` | Subtle zoom-in on emphasized words. Set `0` to disable motion. |
+| `ZOOM_AMOUNT` | `0.08` | Max extra zoom at a punch (0.08 = 8%). |
 | `SMOOTH_ALPHA` | `0.12` | Camera glide. **Lower = smoother but laggier**, higher = snappier. |
 | `ACCENT_HEX` | `#FF5C38` | Active-word caption color. |
 | `USE_NVENC` | `1` | Set `0` to encode on CPU if you have no NVIDIA GPU. |

@@ -124,11 +124,40 @@ def _track_centers(cap, n_frames, w, h, axis, crop_w, crop_h, cfg) -> np.ndarray
     return np.clip(_smooth(raw, cfg.smooth_alpha), lo, hi)
 
 
-def reframe(clip_path: str, dst: str, cfg: Config, ass_path: str | None = None) -> str:
+def _zoom_track(n_frames: int, fps: float, triggers, cfg: Config) -> np.ndarray:
+    """Per-frame zoom factor (1.0 = none, up to 1+zoom_amount). Each trigger makes a
+    trapezoid bump (ease in, hold, ease out); triggers within zoom_gap are skipped."""
+    z = np.ones(n_frames)
+    if not triggers or cfg.zoom_amount <= 0:
+        return z
+    rise, hold, fall = max(1, int(0.25 * fps)), max(1, int(0.2 * fps)), max(1, int(0.4 * fps))
+    last = -1e9
+    for t in triggers:
+        if t - last < cfg.zoom_gap:
+            continue
+        last = t
+        c = int(round(t * fps))
+        for k in range(-rise, hold + fall):
+            i = c + k
+            if i < 0 or i >= n_frames:
+                continue
+            if k < 0:
+                f = (k + rise) / rise          # ease in
+            elif k < hold:
+                f = 1.0                         # hold
+            else:
+                f = max(0.0, 1 - (k - hold) / fall)  # ease out
+            z[i] = max(z[i], 1.0 + cfg.zoom_amount * f)
+    return z
+
+
+def reframe(clip_path: str, dst: str, cfg: Config, ass_path: str | None = None,
+            zoom_at: list[float] | None = None) -> str:
     """Crop clip_path to vertical, following the speaker, audio preserved.
 
     If ass_path is given, the captions are burned in this same encode pass instead of
     a separate ffmpeg round trip - one decode+encode per clip instead of two.
+    zoom_at is a list of timestamps (seconds) to punch-in on.
     """
     cap = cv2.VideoCapture(clip_path)
     w = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
@@ -138,6 +167,7 @@ def reframe(clip_path: str, dst: str, cfg: Config, ass_path: str | None = None) 
 
     crop_w, crop_h, axis = _crop_plan(w, h, cfg)
     centers = _track_centers(cap, n_frames, w, h, axis, crop_w, crop_h, cfg)
+    zoom = _zoom_track(n_frames, fps, zoom_at if cfg.punch_zoom else None, cfg)
 
     Path(dst).parent.mkdir(parents=True, exist_ok=True)
     cmd = ["ffmpeg", "-y",
@@ -159,12 +189,15 @@ def reframe(clip_path: str, dst: str, cfg: Config, ass_path: str | None = None) 
         if not ok:
             break
         c = centers[i] if i < len(centers) else centers[-1]
+        zf = zoom[i] if i < len(zoom) else 1.0
+        zw = max(2, min(w, int(round(crop_w / zf))))   # zoom in = take a smaller window
+        zh = max(2, min(h, int(round(crop_h / zf))))
         if axis == "x":
-            x0 = int(round(c - crop_w / 2.0)); y0 = (h - crop_h) // 2
+            x0 = int(round(c - zw / 2.0)); y0 = (h - zh) // 2
         else:
-            y0 = int(round(c - crop_h / 2.0)); x0 = (w - crop_w) // 2
-        x0 = max(0, min(x0, w - crop_w)); y0 = max(0, min(y0, h - crop_h))
-        window = frame[y0:y0 + crop_h, x0:x0 + crop_w]
+            y0 = int(round(c - zh / 2.0)); x0 = (w - zw) // 2
+        x0 = max(0, min(x0, w - zw)); y0 = max(0, min(y0, h - zh))
+        window = frame[y0:y0 + zh, x0:x0 + zw]
         out = cv2.resize(window, (cfg.target_w, cfg.target_h), interpolation=cv2.INTER_AREA)
         ff.stdin.write(out.tobytes())
 

@@ -62,6 +62,17 @@ def _lines(words: list[dict], cfg: Config) -> list[list[dict]]:
     return lines
 
 
+def emphasis_times(words: list[dict], cfg: Config) -> list[float]:
+    """Start time of the first emphasized keyword in each caption line - the moments a
+    punch-in zoom should land on. Same line/emphasis logic the captions use."""
+    out = []
+    for line in _lines(words, cfg):
+        emph = _emphasis(line)
+        if emph:
+            out.append(line[min(emph)]["start"])
+    return out
+
+
 def _events(words: list[dict], cfg: Config) -> list[str]:
     accent = _ass_color(cfg.accent_hex)
     out = []
