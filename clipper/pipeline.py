@@ -49,15 +49,16 @@ def process(media_path: str, cfg: Config, on_progress: Progress = lambda p, m: N
         name = f"{i+1:02d}-{_slug(clip['title'], f'clip-{i+1}')}"
         on_progress(base, f"Cutting clip {i+1} of {len(clips)}")
 
-        seg = ffmpeg_util.cut(media_path, clip["start"], clip["end"], str(work / f"{name}-seg.mp4"))
+        seg = ffmpeg_util.cut(media_path, clip["start"], clip["end"],
+                              str(work / f"{name}-seg.mp4"), codec=cfg.video_codec)
 
-        on_progress(base + int(span * 0.4), f"Reframing clip {i+1}")
-        vert = crop.reframe(seg, str(work / f"{name}-vert.mp4"), cfg)
-
-        on_progress(base + int(span * 0.7), f"Captioning clip {i+1}")
+        on_progress(base + int(span * 0.4), f"Captioning clip {i+1}")
         cw = _clip_words(transcript["words"], clip["start"], clip["end"])
         ass = captions.write_ass(cw, str(work / f"{name}.ass"), cfg, hook=clip.get("hook", ""))
-        final = captions.burn(vert, ass, str(out / f"{name}.mp4"), cfg)
+
+        # reframe burns the captions in the same encode pass (no separate caption round trip)
+        on_progress(base + int(span * 0.7), f"Reframing clip {i+1}")
+        final = crop.reframe(seg, str(out / f"{name}.mp4"), cfg, ass_path=ass)
 
         results.append({
             "file": Path(final).name,

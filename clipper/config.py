@@ -22,11 +22,11 @@ def _env_int(key: str, default: int) -> int:
 class Config:
     # --- Ollama (the "editor" that picks clips) ---
     ollama_url: str = os.environ.get("OLLAMA_URL", "http://localhost:11434")
-    model: str = os.environ.get("CLIPPER_MODEL", "qwen3:14b")  # 8b also fine; 14b = better taste, fits a 12GB card
+    model: str = os.environ.get("CLIPPER_MODEL", "qwen3:8b")  # 8b = fast; qwen3:14b = better taste, more VRAM
 
     # --- Whisper (the "listener") ---
     # base.en = fast, small.en = better, medium.en / large-v3 = best (needs more VRAM).
-    whisper_model: str = os.environ.get("WHISPER_MODEL", "small.en")
+    whisper_model: str = os.environ.get("WHISPER_MODEL", "base.en")
     whisper_compute: str = os.environ.get("WHISPER_COMPUTE", "int8")
     whisper_device: str = os.environ.get("WHISPER_DEVICE", "auto")  # auto|cuda|cpu
 
@@ -38,7 +38,7 @@ class Config:
     # --- Reframe / face tracking ---
     target_w: int = _env_int("TARGET_W", 1080)   # output width  (9:16)
     target_h: int = _env_int("TARGET_H", 1920)   # output height
-    detect_every: int = _env_int("DETECT_EVERY", 3)   # run face detect every N frames
+    detect_every: int = _env_int("DETECT_EVERY", 6)   # run face detect every N frames
     smooth_alpha: float = _env_float("SMOOTH_ALPHA", 0.12)  # lower = smoother/laggier
 
     # --- Captions ---

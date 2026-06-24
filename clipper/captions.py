@@ -1,6 +1,9 @@
-"""Stage 4 - the captions. Word-by-word highlight (the active word pops)."""
+"""Stage 4 - the captions. Word-by-word highlight (the active word pops).
+
+The ASS file written here is burned into the video during the reframe encode
+(see crop.reframe's ass_path) so there is no separate caption pass.
+"""
 from __future__ import annotations
-import subprocess
 from pathlib import Path
 from .config import Config
 
@@ -112,15 +115,3 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
     Path(path).parent.mkdir(parents=True, exist_ok=True)
     Path(path).write_text(header + "\n".join(events) + "\n", encoding="utf-8")
     return path
-
-
-def burn(video_path: str, ass_path: str, dst: str, cfg: Config) -> str:
-    """Burn the ASS karaoke captions into the video."""
-    Path(dst).parent.mkdir(parents=True, exist_ok=True)
-    escaped = ass_path.replace("\\", "/").replace(":", "\\:")
-    subprocess.run(
-        ["ffmpeg", "-y", "-i", video_path, "-vf", f"ass='{escaped}'",
-         "-c:v", cfg.video_codec, "-pix_fmt", "yuv420p", "-c:a", "copy", dst],
-        capture_output=True, check=True,
-    )
-    return dst

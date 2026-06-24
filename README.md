@@ -63,14 +63,17 @@ Most things are now in the UI. For the rest, set environment variables before la
 
 | Variable | Default | What it does |
 |---|---|---|
-| `CLIPPER_MODEL` | `qwen3:14b` | Ollama model that picks clips. `qwen3:8b` = lighter, less taste. |
-| `WHISPER_MODEL` | `small.en` | `base.en` faster, `large-v3` best quality. |
+| `CLIPPER_MODEL` | `qwen3:8b` | Ollama model that picks clips. `qwen3:14b` = better taste, slower, more VRAM. |
+| `WHISPER_MODEL` | `base.en` | `small.en` more accurate, `large-v3` best (slower). |
+| `DETECT_EVERY` | `6` | Run face detection every N frames. Higher = faster, slightly less precise tracking. |
 | `SMOOTH_ALPHA` | `0.12` | Camera glide. **Lower = smoother but laggier**, higher = snappier. |
 | `ACCENT_HEX` | `#FF5C38` | Active-word caption color. |
 | `USE_NVENC` | `1` | Set `0` to encode on CPU if you have no NVIDIA GPU. |
 
-Memory tip: transcription and clip-scoring don't run at the same instant, so a 12 GB card
-handles `large-v3` for Whisper and `qwen3:14b` for scoring without fighting over VRAM.
+The defaults favor speed. For higher quality at the cost of time, set
+`CLIPPER_MODEL=qwen3:14b` and `WHISPER_MODEL=small.en` (or `large-v3`). Transcription and
+clip-scoring don't run at the same instant, so a 12 GB card handles `large-v3` + `qwen3:14b`
+without fighting over VRAM.
 
 ## Honest limits
 

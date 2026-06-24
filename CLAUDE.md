@@ -18,8 +18,8 @@ clipper/
   ffmpeg_util.py        probe / cut / ensure_ffmpeg helpers
   transcribe.py         Stage 1 - faster-whisper, word-level timestamps
   score.py              Stage 2 - Ollama picks clips, returns validated JSON
-  crop.py               Stage 3 - YuNet face track + 2-pass EMA smoothing, 9:16
-  captions.py           Stage 4 - ASS karaoke generation + burn-in
+  crop.py               Stage 3 - YuNet face track + 2-pass EMA smoothing, 9:16; burns captions in the same encode
+  captions.py           Stage 4 - ASS karaoke generation (burned during reframe)
   pipeline.py           Orchestrates all stages, reports progress
 docs/                   architecture + tuning notes
 ```

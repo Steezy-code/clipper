@@ -35,12 +35,16 @@ def probe(path: str) -> dict:
     }
 
 
-def cut(src: str, start: float, end: float, dst: str) -> str:
-    """Cut [start, end] into its own file, re-encoding so the timeline is clean."""
+def cut(src: str, start: float, end: float, dst: str, codec: str = "libx264") -> str:
+    """Cut [start, end] into its own file, re-encoding so the timeline is clean.
+
+    Pass the GPU codec (h264_nvenc) to keep this off the CPU when a GPU is present.
+    """
+    preset = ["-preset", "fast"] if "nvenc" in codec else ["-preset", "veryfast"]
     Path(dst).parent.mkdir(parents=True, exist_ok=True)
     subprocess.run(
         ["ffmpeg", "-y", "-ss", f"{start:.3f}", "-to", f"{end:.3f}", "-i", src,
-         "-c:v", "libx264", "-preset", "veryfast", "-c:a", "aac", "-movflags", "+faststart", dst],
+         "-c:v", codec, *preset, "-c:a", "aac", "-movflags", "+faststart", dst],
         capture_output=True, check=True,
     )
     return dst

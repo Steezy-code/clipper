@@ -23,6 +23,7 @@ _YUNET_URL = (
     "face_detection_yunet/face_detection_yunet_2023mar.onnx"
 )
 _YUNET_PATH = Path(__file__).parent / "models" / "face_detection_yunet.onnx"
+_DETECT_W = 640  # downscale frames to this width for face detection (speed)
 
 
 def _try_yunet(w: int, h: int):
@@ -58,7 +59,7 @@ def _largest_center(detector, kind, frame):
         f = max(faces, key=lambda f: f[2] * f[3])
         return f[0] + f[2] / 2.0, f[1] + f[3] / 2.0
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-    faces = detector.detectMultiScale(gray, 1.1, 5, minSize=(60, 60))
+    faces = detector.detectMultiScale(gray, 1.1, 5, minSize=(30, 30))
     if len(faces) == 0:
         return None
     x, y, fw, fh = max(faces, key=lambda f: f[2] * f[3])
@@ -89,7 +90,11 @@ def _smooth(track: np.ndarray, alpha: float) -> np.ndarray:
 
 
 def _track_centers(cap, n_frames, w, h, axis, crop_w, crop_h, cfg) -> np.ndarray:
-    detector, kind = _make_detector(w, h)
+    # ponytail: detect on a ~640px-wide frame, not full res - face detection is the
+    # per-frame cost and downscaling cuts it several-fold with no visible accuracy loss.
+    scale = min(1.0, _DETECT_W / w)
+    dw, dh = max(1, round(w * scale)), max(1, round(h * scale))
+    detector, kind = _make_detector(dw, dh)
     full = w if axis == "x" else h
     crop = crop_w if axis == "x" else crop_h
     lo, hi = crop / 2.0, full - crop / 2.0
@@ -102,9 +107,10 @@ def _track_centers(cap, n_frames, w, h, axis, crop_w, crop_h, cfg) -> np.ndarray
         if not ok:
             break
         if idx % cfg.detect_every == 0:
-            center = _largest_center(detector, kind, frame)
+            small = cv2.resize(frame, (dw, dh)) if scale < 1.0 else frame
+            center = _largest_center(detector, kind, small)
             if center is not None:
-                cx, cy = center
+                cx, cy = center[0] / scale, center[1] / scale
                 raw[idx] = np.clip(cx if axis == "x" else cy, lo, hi)
         idx += 1
 
@@ -118,8 +124,12 @@ def _track_centers(cap, n_frames, w, h, axis, crop_w, crop_h, cfg) -> np.ndarray
     return np.clip(_smooth(raw, cfg.smooth_alpha), lo, hi)
 
 
-def reframe(clip_path: str, dst: str, cfg: Config) -> str:
-    """Crop clip_path to vertical, following the speaker, audio preserved."""
+def reframe(clip_path: str, dst: str, cfg: Config, ass_path: str | None = None) -> str:
+    """Crop clip_path to vertical, following the speaker, audio preserved.
+
+    If ass_path is given, the captions are burned in this same encode pass instead of
+    a separate ffmpeg round trip - one decode+encode per clip instead of two.
+    """
     cap = cv2.VideoCapture(clip_path)
     w = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
     h = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
@@ -130,15 +140,17 @@ def reframe(clip_path: str, dst: str, cfg: Config) -> str:
     centers = _track_centers(cap, n_frames, w, h, axis, crop_w, crop_h, cfg)
 
     Path(dst).parent.mkdir(parents=True, exist_ok=True)
+    cmd = ["ffmpeg", "-y",
+           "-f", "rawvideo", "-pixel_format", "bgr24",
+           "-video_size", f"{cfg.target_w}x{cfg.target_h}", "-framerate", f"{fps:.4f}",
+           "-i", "-", "-i", clip_path,
+           "-map", "0:v:0", "-map", "1:a:0?"]
+    if ass_path:
+        esc = ass_path.replace("\\", "/").replace(":", "\\:")
+        cmd += ["-vf", f"ass='{esc}'"]
+    cmd += ["-c:v", cfg.video_codec, "-pix_fmt", "yuv420p", "-c:a", "aac", "-shortest", dst]
     ff = subprocess.Popen(
-        ["ffmpeg", "-y",
-         "-f", "rawvideo", "-pixel_format", "bgr24",
-         "-video_size", f"{cfg.target_w}x{cfg.target_h}", "-framerate", f"{fps:.4f}",
-         "-i", "-", "-i", clip_path,
-         "-map", "0:v:0", "-map", "1:a:0?",
-         "-c:v", cfg.video_codec, "-pix_fmt", "yuv420p",
-         "-c:a", "aac", "-shortest", dst],
-        stdin=subprocess.PIPE, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+        cmd, stdin=subprocess.PIPE, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
     )
 
     cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
