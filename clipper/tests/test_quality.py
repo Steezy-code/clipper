@@ -101,7 +101,27 @@ def test_validate_overrides_layout():
     from clipper.config import validate_overrides
     assert validate_overrides({"layout": "split"}) == {"layout": "split"}
     assert validate_overrides({"layout": "fill"}) == {"layout": "fill"}
+    assert validate_overrides({"layout": "stream"}) == {"layout": "stream"}
     assert validate_overrides({"layout": "bogus"}) == {}
+
+
+def test_facecam_rect():
+    from clipper.crop import _facecam_rect
+    # tight cluster of small boxes in the top-right corner -> a facecam
+    clustered = [[1500, 80, 120, 120], [1505, 85, 118, 122],
+                 [1498, 78, 121, 119], [1502, 82, 120, 121]]
+    r = _facecam_rect(clustered, 1920, 1080)
+    assert r is not None
+    x, y, w, h = r
+    assert 0 <= x and 0 <= y and x + w <= 1920 and y + h <= 1080   # clamped in frame
+    assert w > 120 and h > 120                                       # padded past the face
+    # scattered faces -> not a fixed cam
+    assert _facecam_rect([[100, 100, 120, 120], [900, 500, 120, 120],
+                          [1600, 900, 120, 120]], 1920, 1080) is None
+    # too few detections
+    assert _facecam_rect([[10, 10, 50, 50]], 1920, 1080) is None
+    # full-screen face -> not a cam
+    assert _facecam_rect([[200, 100, 1000, 900]] * 4, 1920, 1080) is None
 
 
 def test_clean_score_hook_sort():

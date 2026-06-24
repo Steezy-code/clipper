@@ -38,3 +38,25 @@ def compose_split(head_path: str, bg_path: str, ass_path: str, dst: str,
         capture_output=True, check=True,
     )
     return dst
+
+
+def compose_stream(src: str, rect: tuple[int, int, int, int], ass_path: str, dst: str,
+                   cfg: Config, top_h: int, bottom_h: int) -> str:
+    """Twitch-style: facecam rect (top) over the full gameplay frame (bottom), one source,
+    one encode. rect is (x, y, w, h) of the webcam box in the source."""
+    fx, fy, fw, fh = rect
+    esc = ass_path.replace("\\", "/").replace(":", "\\:")
+    fc = (f"[0:v]crop={fw}:{fh}:{fx}:{fy},"
+          f"scale={cfg.target_w}:{top_h}:force_original_aspect_ratio=increase,"
+          f"crop={cfg.target_w}:{top_h},setsar=1[top];"
+          f"[0:v]scale={cfg.target_w}:{bottom_h}:force_original_aspect_ratio=increase,"
+          f"crop={cfg.target_w}:{bottom_h},setsar=1[bot];"
+          f"[top][bot]vstack=inputs=2[stk];[stk]ass='{esc}'[v]")
+    Path(dst).parent.mkdir(parents=True, exist_ok=True)
+    subprocess.run(
+        ["ffmpeg", "-y", "-i", src, "-filter_complex", fc, "-map", "[v]", "-map", "0:a?",
+         "-c:v", cfg.video_codec, "-pix_fmt", "yuv420p", "-c:a", "aac",
+         "-movflags", "+faststart", dst],
+        capture_output=True, check=True,
+    )
+    return dst

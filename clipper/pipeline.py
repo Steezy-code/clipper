@@ -58,6 +58,7 @@ def process(media_path: str, cfg: Config, on_progress: Progress = lambda p, m: N
         zoom_at = captions.emphasis_times(cw, cfg) if cfg.punch_zoom else None
         use_split = (cfg.layout == "split" and cfg.background_path
                      and Path(cfg.background_path).exists())
+        facecam = crop.detect_facecam(seg, cfg) if cfg.layout == "stream" else None
         if use_split:
             top_h, bottom_h = layout.split_dims(cfg.target_w, cfg.target_h, cfg.split_ratio)
             head = crop.reframe(seg, str(work / f"{name}-head.mp4"), cfg,
@@ -65,6 +66,10 @@ def process(media_path: str, cfg: Config, on_progress: Progress = lambda p, m: N
                                 out_w=cfg.target_w, out_h=top_h)
             final = layout.compose_split(head, cfg.background_path, ass,
                                          str(out / f"{name}.mp4"), cfg, bottom_h)
+        elif facecam:
+            top_h, bottom_h = layout.split_dims(cfg.target_w, cfg.target_h, cfg.split_ratio)
+            final = layout.compose_stream(seg, facecam, ass, str(out / f"{name}.mp4"),
+                                          cfg, top_h, bottom_h)
         else:
             # reframe burns the captions in the same encode pass (no separate caption round trip)
             final = crop.reframe(seg, str(out / f"{name}.mp4"), cfg, ass_path=ass, zoom_at=zoom_at)

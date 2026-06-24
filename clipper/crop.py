@@ -66,6 +66,70 @@ def _largest_center(detector, kind, frame):
     return x + fw / 2.0, y + fh / 2.0
 
 
+def _largest_box(detector, kind, frame):
+    """Return (x, y, w, h) of the biggest detected face, or None."""
+    if kind == "yunet":
+        _, faces = detector.detect(frame)
+        if faces is None or not len(faces):
+            return None
+        f = max(faces, key=lambda f: f[2] * f[3])
+        return float(f[0]), float(f[1]), float(f[2]), float(f[3])
+    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+    faces = detector.detectMultiScale(gray, 1.1, 5, minSize=(30, 30))
+    if len(faces) == 0:
+        return None
+    x, y, fw, fh = max(faces, key=lambda f: f[2] * f[3])
+    return float(x), float(y), float(fw), float(fh)
+
+
+def _facecam_rect(boxes: list, w: int, h: int, pad: float = 0.5):
+    """From sampled face boxes (x,y,fw,fh), return the padded facecam rect (x,y,w,h),
+    or None if the faces are too few, too scattered (not a fixed cam), or fill the
+    screen (a full-screen face, not a webcam box)."""
+    if len(boxes) < 3:
+        return None
+    arr = np.array(boxes, dtype=float)
+    cx, cy = arr[:, 0] + arr[:, 2] / 2, arr[:, 1] + arr[:, 3] / 2
+    fw, fh = float(np.median(arr[:, 2])), float(np.median(arr[:, 3]))
+    if fw > 0.5 * w:                                  # full-screen face, not a cam
+        return None
+    mcx, mcy = float(np.median(cx)), float(np.median(cy))
+    if np.median(np.abs(cx - mcx)) > fw * 0.6 or np.median(np.abs(cy - mcy)) > fh * 0.6:
+        return None                                  # centers don't cluster -> no fixed cam
+    rw, rh = fw * (1 + 2 * pad), fh * (1 + 2 * pad)
+    rx, ry = mcx - rw / 2, mcy - rh / 2
+    rx, ry = max(0.0, min(rx, w - 1.0)), max(0.0, min(ry, h - 1.0))
+    rw, rh = min(rw, w - rx), min(rh, h - ry)
+    return int(rx), int(ry), int(rw), int(rh)
+
+
+def detect_facecam(clip_path: str, cfg: Config):
+    """Sample frames and locate a stationary webcam box (x,y,w,h), or None. Used by the
+    'stream' layout to separate facecam from gameplay in a single source."""
+    cap = cv2.VideoCapture(clip_path)
+    w = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+    h = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+    n = int(cap.get(cv2.CAP_PROP_FRAME_COUNT)) or 1
+    scale = min(1.0, _DETECT_W / w)
+    dw, dh = max(1, round(w * scale)), max(1, round(h * scale))
+    detector, kind = _make_detector(dw, dh)
+    step = max(1, n // 24)
+    boxes, idx = [], 0
+    while True:
+        if not cap.grab():
+            break
+        if idx % step == 0:
+            ok, frame = cap.retrieve()
+            if ok:
+                small = cv2.resize(frame, (dw, dh)) if scale < 1.0 else frame
+                box = _largest_box(detector, kind, small)
+                if box is not None:
+                    boxes.append([c / scale for c in box])
+        idx += 1
+    cap.release()
+    return _facecam_rect(boxes, w, h)
+
+
 def _crop_plan(w: int, h: int, tw: int, th: int) -> tuple[int, int, str]:
     """Return (crop_w, crop_h, axis) for the largest tw:th window that fits."""
     target = tw / th

@@ -83,7 +83,7 @@ ASPECTS: dict[str, tuple[int, int]] = {
     "16:9": (1920, 1080),
 }
 CAPTION_STYLES: tuple[str, ...] = ("karaoke", "boxed", "bold")
-LAYOUTS: tuple[str, ...] = ("fill", "split")
+LAYOUTS: tuple[str, ...] = ("fill", "split", "stream")
 # length preset -> (min_clip_s, max_clip_s)
 LENGTHS: dict[str, tuple[float, float]] = {
     "auto": (15.0, 60.0),

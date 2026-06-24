@@ -36,7 +36,7 @@ On macOS / Linux the run command is `./.venv/bin/python app.py`.
 - **Captions** — `Karaoke`, `Boxed` (bar behind text), or `Bold`
 - **Length** — `Auto (15–60s)`, `Under 30s`, `30–60s`, or `60–90s`
 - **Clips** — how many to cut (1–12)
-- **Layout** — `Fill` (single speaker) or `Split` (talking head on top, your gameplay/B-roll clip on the bottom). Choosing Split reveals a picker for the background video.
+- **Layout** — `Fill` (single speaker), `Split` (talking head on top, your gameplay/B-roll clip on the bottom — reveals a background picker), or `Stream (auto facecam)` (detects a Twitch-style webcam box and stacks facecam over gameplay automatically). Stream falls back to Fill if no facecam is found.
 - **Trim silence** — on by default; collapses dead air between words so clips feel tightly edited
 
 Each finished clip shows a virality score and an auto-generated hook headline.
