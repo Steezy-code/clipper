@@ -3,16 +3,17 @@ from __future__ import annotations
 import shutil
 import threading
 import uuid
+from dataclasses import replace
 from pathlib import Path
 
 import uvicorn
-from fastapi import FastAPI, UploadFile, File, HTTPException
+from fastapi import FastAPI, UploadFile, File, Form, HTTPException
 from fastapi.responses import HTMLResponse, JSONResponse, FileResponse
 
-from clipper.config import Config
+from clipper.config import Config, validate_overrides
 from clipper import pipeline
 
-cfg = Config()
+base_cfg = Config()
 app = FastAPI(title="clipper")
 STATIC = Path(__file__).parent / "static"
 UPLOADS = Path("uploads"); UPLOADS.mkdir(exist_ok=True)
@@ -21,7 +22,7 @@ UPLOADS = Path("uploads"); UPLOADS.mkdir(exist_ok=True)
 JOBS: dict[str, dict] = {}
 
 
-def _run(job_id: str, path: str) -> None:
+def _run(job_id: str, path: str, cfg: Config) -> None:
     def progress(percent: int, message: str) -> None:
         JOBS[job_id].update(percent=percent, message=message)
     try:
@@ -37,16 +38,21 @@ def index() -> str:
 
 
 @app.post("/api/upload")
-async def upload(file: UploadFile = File(...)) -> JSONResponse:
+async def upload(file: UploadFile = File(...),
+                 aspect: str = Form("9:16"),
+                 caption_style: str = Form("karaoke"),
+                 num_clips: str = Form(None)) -> JSONResponse:
     if not file.filename:
         raise HTTPException(400, "No file provided.")
     job_id = uuid.uuid4().hex[:12]
     dest = UPLOADS / f"{job_id}-{Path(file.filename).name}"
     with dest.open("wb") as out:
         shutil.copyfileobj(file.file, out)
+    job_cfg = replace(base_cfg, **validate_overrides(
+        {"aspect": aspect, "caption_style": caption_style, "num_clips": num_clips}))
     JOBS[job_id] = {"status": "running", "percent": 0, "message": "Queued",
                     "clips": [], "error": None}
-    threading.Thread(target=_run, args=(job_id, str(dest)), daemon=True).start()
+    threading.Thread(target=_run, args=(job_id, str(dest), job_cfg), daemon=True).start()
     return JSONResponse({"job": job_id})
 
 
@@ -60,12 +66,12 @@ def status(job_id: str) -> JSONResponse:
 
 @app.get("/clips/{name}")
 def clip(name: str) -> FileResponse:
-    path = Path(cfg.out_dir) / Path(name).name
+    path = Path(base_cfg.out_dir) / Path(name).name
     if not path.exists():
         raise HTTPException(404, "Clip not found.")
     return FileResponse(path, media_type="video/mp4")
 
 
 if __name__ == "__main__":
-    print("clipper -> http://localhost:8765   (model: %s)" % cfg.model)
+    print("clipper -> http://localhost:8765   (model: %s)" % base_cfg.model)
     uvicorn.run(app, host="127.0.0.1", port=8765, log_level="warning")
