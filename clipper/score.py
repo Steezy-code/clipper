@@ -10,8 +10,11 @@ _SYSTEM = (
     "Each clip must START and END on a natural sentence boundary, make sense without "
     "surrounding context, and run between {lo:.0f} and {hi:.0f} seconds. Favor a strong "
     "hook in the first seconds, a complete thought, and a clear payoff. "
+    "Also write a punchy <=8 word on-screen headline ('hook') and a 'score' from 0-100 "
+    "predicting its short-form virality. "
     "Return STRICT JSON only, no prose, in this exact shape:\n"
-    '{{"clips":[{{"start":<seconds>,"end":<seconds>,"title":"<=6 words","reason":"why it lands"}}]}}'
+    '{{"clips":[{{"start":<seconds>,"end":<seconds>,"title":"<=6 words",'
+    '"hook":"<=8 words","reason":"why it lands","score":<integer 0-100>}}]}}'
 )
 
 
@@ -56,9 +59,16 @@ def _clean(clips: list[dict], duration: float, cfg: Config) -> list[dict]:
             continue
         if e - s > cfg.max_clip_s:
             e = s + cfg.max_clip_s
+        try:
+            sc = int(float(c.get("score", 50)))
+        except (TypeError, ValueError):
+            sc = 50
+        sc = max(0, min(100, sc))
+        title = str(c.get("title", "Clip"))[:60]
+        hook = str(c.get("hook") or title)[:80]
         out.append({"start": round(s, 2), "end": round(e, 2),
-                    "title": str(c.get("title", "Clip"))[:60],
-                    "reason": str(c.get("reason", ""))[:200]})
+                    "title": title, "hook": hook,
+                    "reason": str(c.get("reason", ""))[:200], "score": sc})
     out.sort(key=lambda c: c["start"])
     # drop overlaps, keep the earlier
     deduped: list[dict] = []
@@ -66,6 +76,7 @@ def _clean(clips: list[dict], duration: float, cfg: Config) -> list[dict]:
         if deduped and c["start"] < deduped[-1]["end"]:
             continue
         deduped.append(c)
+    deduped.sort(key=lambda c: c["score"], reverse=True)
     return deduped[: cfg.num_clips]
 
 

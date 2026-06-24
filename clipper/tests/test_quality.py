@@ -18,6 +18,25 @@ def test_config_has_caption_style():
     assert Config().caption_style == "karaoke"
 
 
+def test_clean_score_hook_sort():
+    from clipper.score import _clean
+    from clipper.config import Config
+    cfg = Config()
+    raw = [
+        {"start": 0, "end": 20, "title": "A", "reason": "r", "score": 40},
+        {"start": 30, "end": 55, "title": "B", "hook": "Big hook here", "reason": "r", "score": 90},
+        {"start": 60, "end": 80, "title": "C", "reason": "r"},          # no score, no hook
+        {"start": 90, "end": 115, "title": "D", "reason": "r", "score": 250},  # out of range
+    ]
+    out = _clean(raw, 1000.0, cfg)
+    assert out[0]["score"] == 100, out[0]            # 250 clamped, sorts first
+    assert out[1]["score"] == 90 and out[1]["hook"] == "Big hook here"
+    assert any(c["title"] == "C" and c["score"] == 50 and c["hook"] == "C" for c in out)
+    for c in out:
+        assert 0 <= c["score"] <= 100
+        assert c["hook"]
+
+
 def run() -> None:
     tests = [v for k, v in sorted(globals().items())
              if k.startswith("test_") and callable(v)]
