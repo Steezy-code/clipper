@@ -68,6 +68,13 @@ ASPECTS: dict[str, tuple[int, int]] = {
     "16:9": (1920, 1080),
 }
 CAPTION_STYLES: tuple[str, ...] = ("karaoke", "boxed", "bold")
+# length preset -> (min_clip_s, max_clip_s)
+LENGTHS: dict[str, tuple[float, float]] = {
+    "auto": (15.0, 60.0),
+    "under30": (8.0, 30.0),
+    "30to60": (30.0, 60.0),
+    "60to90": (60.0, 90.0),
+}
 
 
 def validate_overrides(form: dict) -> dict:
@@ -77,6 +84,8 @@ def validate_overrides(form: dict) -> dict:
         out["target_w"], out["target_h"] = ASPECTS[form["aspect"]]
     if form.get("caption_style") in CAPTION_STYLES:
         out["caption_style"] = form["caption_style"]
+    if form.get("length") in LENGTHS:
+        out["min_clip_s"], out["max_clip_s"] = LENGTHS[form["length"]]
     n = form.get("num_clips")
     if n is not None:
         try:

@@ -86,10 +86,10 @@
     border:0;padding:9px 15px;cursor:pointer;transition:background .15s,color .15s}
   .seg button:hover{color:var(--text)}
   .seg button.on{background:var(--accent);color:var(--ink);font-weight:600}
-  #capStyle,#numClips{font-family:var(--body);font-size:14px;color:var(--text);
+  #capStyle,#length,#numClips{font-family:var(--body);font-size:14px;color:var(--text);
     background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:9px 12px}
   #numClips{width:74px}
-  #capStyle:focus,#numClips:focus{outline:2px solid var(--accent);outline-offset:1px}
+  #capStyle:focus,#length:focus,#numClips:focus{outline:2px solid var(--accent);outline-offset:1px}
   .badge-score{font-family:var(--display);font-weight:600;font-size:11px;border-radius:999px;
     padding:3px 9px;letter-spacing:.02em}
   .s-hi{background:rgba(61,220,151,.16);color:var(--done)}
@@ -209,6 +209,15 @@
       </select>
     </div>
     <div class="ctrl">
+      <span class="clab">Length</span>
+      <select id="length">
+        <option value="auto">Auto (15–60s)</option>
+        <option value="under30">Under 30s</option>
+        <option value="30to60">30–60s</option>
+        <option value="60to90">60–90s</option>
+      </select>
+    </div>
+    <div class="ctrl">
       <span class="clab">Clips</span>
       <input type="number" id="numClips" min="1" max="12" value="6" />
     </div>
@@ -303,6 +312,7 @@ async function start(file){
   fd.append("file", file);
   fd.append("aspect", aspect);
   fd.append("caption_style", document.getElementById("capStyle").value);
+  fd.append("length", document.getElementById("length").value);
   fd.append("num_clips", document.getElementById("numClips").value);
   let job;
   try{

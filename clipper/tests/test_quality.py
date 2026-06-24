@@ -18,6 +18,14 @@ def test_config_has_caption_style():
     assert Config().caption_style == "karaoke"
 
 
+def test_validate_overrides_length():
+    from clipper.config import validate_overrides
+    assert validate_overrides({"length": "under30"}) == {"min_clip_s": 8.0, "max_clip_s": 30.0}
+    assert validate_overrides({"length": "60to90"}) == {"min_clip_s": 60.0, "max_clip_s": 90.0}
+    assert validate_overrides({"length": "auto"}) == {"min_clip_s": 15.0, "max_clip_s": 60.0}
+    assert validate_overrides({"length": "bogus"}) == {}
+
+
 def test_clean_score_hook_sort():
     from clipper.score import _clean
     from clipper.config import Config
