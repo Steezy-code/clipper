@@ -1,0 +1,12 @@
+faster-whisper>=1.0.0
+opencv-python-headless>=4.9.0
+numpy>=1.24
+requests>=2.31
+fastapi>=0.110
+uvicorn[standard]>=0.29
+python-multipart>=0.0.9
+
+# GPU transcription on Windows: faster-whisper/ctranslate2 need these CUDA runtime DLLs.
+# Remove both lines if you run Whisper on CPU only (WHISPER_DEVICE=cpu).
+nvidia-cublas-cu12
+nvidia-cudnn-cu12

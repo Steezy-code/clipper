@@ -1,0 +1,13 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# Runtime output / scratch
+uploads/
+work/
+clips/
+_smoketest/
+
+# Auto-downloaded model (YuNet) — fetched on first run
+clipper/models/
