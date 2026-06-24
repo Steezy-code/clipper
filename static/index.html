@@ -77,6 +77,26 @@
   .drop span{color:var(--muted);font-size:13.5px;margin-top:7px}
   input[type=file]{display:none}
 
+  .controls{display:flex;flex-wrap:wrap;gap:22px;margin:22px 2px 0;align-items:flex-end}
+  .ctrl{display:flex;flex-direction:column;gap:8px}
+  .clab{font-family:var(--display);text-transform:uppercase;letter-spacing:.16em;
+    font-size:10px;color:var(--muted)}
+  .seg{display:inline-flex;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+  .seg button{font-family:var(--display);font-size:13px;color:var(--muted);background:transparent;
+    border:0;padding:9px 15px;cursor:pointer;transition:background .15s,color .15s}
+  .seg button:hover{color:var(--text)}
+  .seg button.on{background:var(--accent);color:var(--ink);font-weight:600}
+  #capStyle,#numClips{font-family:var(--body);font-size:14px;color:var(--text);
+    background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:9px 12px}
+  #numClips{width:74px}
+  #capStyle:focus,#numClips:focus{outline:2px solid var(--accent);outline-offset:1px}
+  .badge-score{font-family:var(--display);font-weight:600;font-size:11px;border-radius:999px;
+    padding:3px 9px;letter-spacing:.02em}
+  .s-hi{background:rgba(61,220,151,.16);color:var(--done)}
+  .s-mid{background:rgba(255,176,32,.16);color:#FFB020}
+  .s-lo{background:var(--panel-2);color:var(--muted)}
+  .card .head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:0 0 6px}
+
   /* ---- progress: the filmstrip ---- */
   .strip{margin:44px 0 0;border:1px solid var(--line);border-radius:var(--r);
     overflow:hidden;background:var(--panel)}
@@ -171,6 +191,29 @@
     <input type="file" id="file" accept="video/*" />
   </label>
 
+  <div class="controls" id="controls">
+    <div class="ctrl">
+      <span class="clab">Aspect</span>
+      <div class="seg" id="aspect" role="group" aria-label="Aspect ratio">
+        <button type="button" data-v="9:16" class="on">9:16</button>
+        <button type="button" data-v="1:1">1:1</button>
+        <button type="button" data-v="16:9">16:9</button>
+      </div>
+    </div>
+    <div class="ctrl">
+      <span class="clab">Captions</span>
+      <select id="capStyle">
+        <option value="karaoke">Karaoke</option>
+        <option value="boxed">Boxed</option>
+        <option value="bold">Bold</option>
+      </select>
+    </div>
+    <div class="ctrl">
+      <span class="clab">Clips</span>
+      <input type="number" id="numClips" min="1" max="12" value="6" />
+    </div>
+  </div>
+
   <section id="run" class="hidden">
     <div class="strip">
       <div class="sprockets" aria-hidden="true"></div>
@@ -244,13 +287,23 @@ drop.addEventListener("drop", ev=>{
 drop.addEventListener("keydown", ev=>{ if(ev.key==="Enter"||ev.key===" ") fileInput.click(); });
 fileInput.addEventListener("change", ()=>{ if(fileInput.files[0]) start(fileInput.files[0]); });
 
+let aspect = "9:16";
+document.querySelectorAll("#aspect button").forEach(b=>b.addEventListener("click",()=>{
+  document.querySelectorAll("#aspect button").forEach(x=>x.classList.remove("on"));
+  b.classList.add("on"); aspect = b.dataset.v;
+}));
+
 async function start(file){
   errEl.classList.add("hidden");
   grid.innerHTML = ""; note.classList.add("hidden"); resultsHead.classList.add("hidden");
   run.classList.remove("hidden");
   paint(0); fill.style.width="0%"; pctEl.textContent="0"; msgEl.textContent="Uploading";
 
-  const fd = new FormData(); fd.append("file", file);
+  const fd = new FormData();
+  fd.append("file", file);
+  fd.append("aspect", aspect);
+  fd.append("caption_style", document.getElementById("capStyle").value);
+  fd.append("num_clips", document.getElementById("numClips").value);
   let job;
   try{
     const res = await fetch("/api/upload", {method:"POST", body:fd});
@@ -286,18 +339,25 @@ function render(clips){
   resultsHead.classList.remove("hidden");
   countEl.textContent = clips.length + (clips.length===1?" clip":" clips");
   note.classList.remove("hidden");
-  grid.innerHTML = clips.map((c,i)=>`
+  grid.innerHTML = clips.map((c,i)=>{
+    const s = c.score ?? 50;
+    const cls = s>=75 ? "s-hi" : s>=50 ? "s-mid" : "s-lo";
+    return `
     <div class="card" style="animation-delay:${i*0.06}s">
       <video src="/clips/${encodeURIComponent(c.file)}" controls preload="metadata"></video>
       <div class="meta">
-        <p class="t">${c.title}</p>
+        <div class="head">
+          <p class="t">${c.hook || c.title}</p>
+          <span class="badge-score ${cls}">${s}</span>
+        </div>
         <p class="r">${c.reason||""}</p>
         <div class="row">
           <span class="len">${c.length}s</span>
           <a class="dl" href="/clips/${encodeURIComponent(c.file)}" download>Download</a>
         </div>
       </div>
-    </div>`).join("");
+    </div>`;
+  }).join("");
 }
 </script>
 </body>
