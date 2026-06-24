@@ -37,6 +37,27 @@ def test_clean_score_hook_sort():
         assert c["hook"]
 
 
+def test_captions_styles_emphasis_hook():
+    import dataclasses, tempfile, os
+    from clipper.captions import write_ass, STYLES, _ass_color
+    from clipper.config import Config
+    base = Config()
+    words = [{"word": "Productivity", "start": 0.0, "end": 0.4},
+             {"word": "is", "start": 0.4, "end": 0.5},
+             {"word": "everything", "start": 0.5, "end": 1.0}]
+    accent = _ass_color(base.accent_hex)
+    assert set(STYLES) == {"karaoke", "boxed", "bold"}
+    for style in STYLES:
+        cfg = dataclasses.replace(base, caption_style=style)
+        p = os.path.join(tempfile.gettempdir(), f"t_{style}.ass")
+        write_ass(words, p, cfg, hook="Stop wasting time")
+        text = open(p, encoding="utf-8").read()
+        assert "Style: Pop," in text
+        assert "Style: Hook," in text
+        assert "Stop wasting time" in text          # hook burned in
+        assert accent in text                        # active word / keyword emphasis
+
+
 def run() -> None:
     tests = [v for k, v in sorted(globals().items())
              if k.startswith("test_") and callable(v)]
