@@ -18,15 +18,20 @@ app = FastAPI(title="clipper")
 STATIC = Path(__file__).parent / "static"
 UPLOADS = Path("uploads"); UPLOADS.mkdir(exist_ok=True)
 
-# in-memory job store: id -> {status, percent, message, clips, error}
+# in-memory, UI-facing job store: id -> {status, percent, message, clips, error}
 JOBS: dict[str, dict] = {}
+# internal per-job state for single-clip regeneration (not sent to the UI / not JSON)
+JOB_STATE: dict[str, dict] = {}
 
 
 def _run(job_id: str, path: str, cfg: Config) -> None:
     def progress(percent: int, message: str) -> None:
         JOBS[job_id].update(percent=percent, message=message)
     try:
-        clips = pipeline.process(path, cfg, progress)
+        transcript, scored = pipeline.analyze(path, cfg, progress)
+        # keep the slow-stage results so a single clip can be re-rendered later
+        JOB_STATE[job_id] = {"transcript": transcript, "scored": scored, "media": path, "cfg": cfg}
+        clips = pipeline.render_all(path, transcript, scored, cfg, progress)
         JOBS[job_id].update(status="done", percent=100, clips=clips)
     except Exception as exc:  # surface the real reason to the UI
         JOBS[job_id].update(status="error", error=str(exc))
@@ -73,6 +78,27 @@ def status(job_id: str) -> JSONResponse:
     if not job:
         raise HTTPException(404, "Unknown job.")
     return JSONResponse(job)
+
+
+@app.post("/api/regenerate/{job_id}/{idx}")
+def regenerate(job_id: str, idx: int,
+               aspect: str = Form("9:16"),
+               caption_style: str = Form("karaoke"),
+               layout: str = Form("fill"),
+               trim: str = Form("1")) -> JSONResponse:
+    st, job = JOB_STATE.get(job_id), JOBS.get(job_id)
+    if not st or not job:
+        raise HTTPException(404, "Unknown job.")
+    if idx < 0 or idx >= len(st["scored"]):
+        raise HTTPException(404, "Unknown clip.")
+    cfg = replace(st["cfg"], **validate_overrides(
+        {"aspect": aspect, "caption_style": caption_style, "layout": layout, "trim": trim}))
+    clip = st["scored"][idx]
+    res = pipeline.render_clip(st["media"], st["transcript"]["words"], clip,
+                              pipeline.clip_name(clip, idx), cfg)
+    if idx < len(job.get("clips", [])):
+        job["clips"][idx] = res
+    return JSONResponse(res)
 
 
 @app.get("/clips/{name}")

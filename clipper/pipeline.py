@@ -15,11 +15,9 @@ def _slug(text: str, fallback: str) -> str:
     return s[:40] or fallback
 
 
-def process(media_path: str, cfg: Config, on_progress: Progress = lambda p, m: None) -> list[dict]:
+def analyze(media_path: str, cfg: Config, on_progress: Progress = lambda p, m: None) -> tuple[dict, list]:
+    """Stages 1-2: transcribe + score. Returns (transcript, clips). The slow, reusable work."""
     ffmpeg_util.ensure_ffmpeg()
-    work = Path(cfg.work_dir); work.mkdir(parents=True, exist_ok=True)
-    out = Path(cfg.out_dir); out.mkdir(parents=True, exist_ok=True)
-
     on_progress(8, "Transcribing audio")
     transcript = transcribe.transcribe(media_path, cfg)
     if not transcript["words"]:
@@ -29,61 +27,79 @@ def process(media_path: str, cfg: Config, on_progress: Progress = lambda p, m: N
     clips = score.score(transcript, cfg)
     if not clips:
         raise RuntimeError("The model returned no usable clips. Try a longer source video.")
+    return transcript, clips
 
+
+def clip_name(clip: dict, i: int) -> str:
+    # ponytail: not job-namespaced (single-user/localhost tool); if concurrent jobs are ever
+    # supported, prefix with the job id.
+    return f"{i+1:02d}-{_slug(clip['title'], f'clip-{i+1}')}"
+
+
+def render_clip(media_path: str, words: list[dict], clip: dict, name: str, cfg: Config) -> dict:
+    """Stages 3-4 for ONE clip: cut (drop silence) -> reframe/compose -> burn captions.
+    Reused by the full run and by single-clip regeneration."""
+    work = Path(cfg.work_dir); work.mkdir(parents=True, exist_ok=True)
+    out = Path(cfg.out_dir); out.mkdir(parents=True, exist_ok=True)
+
+    abs_words = [w for w in words if w["end"] > clip["start"] and w["start"] < clip["end"]]
+    spans = (trim.keep_spans(abs_words, clip["start"], clip["end"], cfg)
+             if cfg.trim_silence else [(clip["start"], clip["end"])])
+    segpath = str(work / f"{name}-seg.mp4")
+    if len(spans) == 1:
+        seg = ffmpeg_util.cut(media_path, spans[0][0], spans[0][1], segpath, codec=cfg.video_codec)
+    else:
+        rel = [(a - clip["start"], b - clip["start"]) for a, b in spans]
+        seg = ffmpeg_util.cut_spans(media_path, clip["start"], clip["end"], rel,
+                                    segpath, codec=cfg.video_codec)
+
+    cw = trim.remap(abs_words, spans)
+    ass = captions.write_ass(cw, str(work / f"{name}.ass"), cfg, hook=clip.get("hook", ""))
+    zoom_at = captions.emphasis_times(cw, cfg) if cfg.punch_zoom else None
+
+    use_split = (cfg.layout == "split" and cfg.background_path
+                 and Path(cfg.background_path).exists())
+    facecam = crop.detect_facecam(seg, cfg) if cfg.layout == "stream" else None
+    if use_split:
+        top_h, bottom_h = layout.split_dims(cfg.target_w, cfg.target_h, cfg.split_ratio)
+        head = crop.reframe(seg, str(work / f"{name}-head.mp4"), cfg,
+                            ass_path=None, zoom_at=zoom_at, out_w=cfg.target_w, out_h=top_h)
+        final = layout.compose_split(head, cfg.background_path, ass,
+                                     str(out / f"{name}.mp4"), cfg, bottom_h)
+    elif facecam:
+        top_h, bottom_h = layout.split_dims(cfg.target_w, cfg.target_h, cfg.split_ratio)
+        final = layout.compose_stream(seg, facecam, ass, str(out / f"{name}.mp4"),
+                                      cfg, top_h, bottom_h)
+    else:
+        # reframe burns the captions in the same encode pass (no separate caption round trip)
+        final = crop.reframe(seg, str(out / f"{name}.mp4"), cfg, ass_path=ass, zoom_at=zoom_at)
+
+    return {
+        "file": Path(final).name,
+        "title": clip["title"],
+        "hook": clip.get("hook", clip["title"]),
+        "reason": clip["reason"],
+        "score": clip.get("score", 50),
+        "start": clip["start"],
+        "end": clip["end"],
+        "length": round(clip["end"] - clip["start"], 1),
+    }
+
+
+def render_all(media_path: str, transcript: dict, clips: list, cfg: Config,
+               on_progress: Progress = lambda p, m: None) -> list[dict]:
+    """Stages 3-4 for every clip, with progress."""
     results = []
     span = 60.0 / len(clips)
     for i, clip in enumerate(clips):
         base = 38 + int(i * span)
-        # ponytail: not job-namespaced (single-user/localhost tool); if concurrent jobs are ever supported, prefix name with the job id.
-        name = f"{i+1:02d}-{_slug(clip['title'], f'clip-{i+1}')}"
         on_progress(base, f"Cutting clip {i+1} of {len(clips)}")
-
-        abs_words = [w for w in transcript["words"]
-                     if w["end"] > clip["start"] and w["start"] < clip["end"]]
-        spans = (trim.keep_spans(abs_words, clip["start"], clip["end"], cfg)
-                 if cfg.trim_silence else [(clip["start"], clip["end"])])
-        segpath = str(work / f"{name}-seg.mp4")
-        if len(spans) == 1:
-            seg = ffmpeg_util.cut(media_path, spans[0][0], spans[0][1], segpath, codec=cfg.video_codec)
-        else:
-            rel = [(a - clip["start"], b - clip["start"]) for a, b in spans]
-            seg = ffmpeg_util.cut_spans(media_path, clip["start"], clip["end"], rel,
-                                        segpath, codec=cfg.video_codec)
-
-        on_progress(base + int(span * 0.4), f"Captioning clip {i+1}")
-        cw = trim.remap(abs_words, spans)
-        ass = captions.write_ass(cw, str(work / f"{name}.ass"), cfg, hook=clip.get("hook", ""))
-
-        on_progress(base + int(span * 0.7), f"Reframing clip {i+1}")
-        zoom_at = captions.emphasis_times(cw, cfg) if cfg.punch_zoom else None
-        use_split = (cfg.layout == "split" and cfg.background_path
-                     and Path(cfg.background_path).exists())
-        facecam = crop.detect_facecam(seg, cfg) if cfg.layout == "stream" else None
-        if use_split:
-            top_h, bottom_h = layout.split_dims(cfg.target_w, cfg.target_h, cfg.split_ratio)
-            head = crop.reframe(seg, str(work / f"{name}-head.mp4"), cfg,
-                                ass_path=None, zoom_at=zoom_at,
-                                out_w=cfg.target_w, out_h=top_h)
-            final = layout.compose_split(head, cfg.background_path, ass,
-                                         str(out / f"{name}.mp4"), cfg, bottom_h)
-        elif facecam:
-            top_h, bottom_h = layout.split_dims(cfg.target_w, cfg.target_h, cfg.split_ratio)
-            final = layout.compose_stream(seg, facecam, ass, str(out / f"{name}.mp4"),
-                                          cfg, top_h, bottom_h)
-        else:
-            # reframe burns the captions in the same encode pass (no separate caption round trip)
-            final = crop.reframe(seg, str(out / f"{name}.mp4"), cfg, ass_path=ass, zoom_at=zoom_at)
-
-        results.append({
-            "file": Path(final).name,
-            "title": clip["title"],
-            "hook": clip.get("hook", clip["title"]),
-            "reason": clip["reason"],
-            "score": clip.get("score", 50),
-            "start": clip["start"],
-            "end": clip["end"],
-            "length": round(clip["end"] - clip["start"], 1),
-        })
-
+        on_progress(base + int(span * 0.5), f"Reframing clip {i+1}")
+        results.append(render_clip(media_path, transcript["words"], clip, clip_name(clip, i), cfg))
     on_progress(100, f"Done - {len(results)} clips ready")
     return results
+
+
+def process(media_path: str, cfg: Config, on_progress: Progress = lambda p, m: None) -> list[dict]:
+    transcript, clips = analyze(media_path, cfg, on_progress)
+    return render_all(media_path, transcript, clips, cfg, on_progress)

@@ -155,6 +155,12 @@
     cursor:pointer;transition:background .18s,transform .12s}
   .dl:hover{background:var(--accent-2)} .dl:active{transform:scale(.96)}
   .dl:focus-visible{outline:2px solid var(--text);outline-offset:2px}
+  .actions{display:flex;align-items:center;gap:8px}
+  .regen{font-family:var(--display);font-size:14px;font-weight:600;color:var(--text);
+    background:transparent;border:1px solid var(--line);border-radius:8px;padding:6px 10px;
+    cursor:pointer;line-height:1;transition:border-color .15s,color .15s}
+  .regen:hover{border-color:var(--accent);color:var(--accent)}
+  .regen:disabled{opacity:.5;cursor:default}
 
   .note{margin-top:28px;color:var(--faint);font-size:13px}
   .note code{font-family:ui-monospace,monospace;color:var(--muted);background:var(--panel);
@@ -275,6 +281,7 @@ const fill = document.getElementById("fill");
 const msgEl = document.getElementById("msg");
 const pctEl = document.getElementById("pct");
 const grid = document.getElementById("grid");
+let currentJob = null;
 const errEl = document.getElementById("error");
 const note = document.getElementById("note");
 const resultsHead = document.getElementById("resultsHead");
@@ -355,6 +362,7 @@ async function start(file){
     if(!res.ok) throw new Error("Upload failed.");
     job = (await res.json()).job;
   }catch(e){ showError(e.message); return; }
+  currentJob = job;
   poll(job);
 }
 
@@ -388,7 +396,7 @@ function render(clips){
     const s = c.score ?? 50;
     const cls = s>=75 ? "s-hi" : s>=50 ? "s-mid" : "s-lo";
     return `
-    <div class="card" style="animation-delay:${i*0.06}s">
+    <div class="card" data-i="${i}" style="animation-delay:${i*0.06}s">
       <video src="/clips/${encodeURIComponent(c.file)}" controls preload="metadata"></video>
       <div class="meta">
         <div class="head">
@@ -398,12 +406,39 @@ function render(clips){
         <p class="r">${c.reason||""}</p>
         <div class="row">
           <span class="len">${c.length}s</span>
-          <a class="dl" href="/clips/${encodeURIComponent(c.file)}" download>Download</a>
+          <span class="actions">
+            <button class="regen" data-i="${i}" type="button" title="Re-render with current settings">↻</button>
+            <a class="dl" href="/clips/${encodeURIComponent(c.file)}" download>Download</a>
+          </span>
         </div>
       </div>
     </div>`;
   }).join("");
 }
+
+grid.addEventListener("click", async (e)=>{
+  const btn = e.target.closest(".regen"); if(!btn || !currentJob) return;
+  const card = btn.closest(".card"); const i = btn.dataset.i;
+  btn.disabled = true; btn.textContent = "…";
+  const fd = new FormData();
+  fd.append("aspect", aspect);
+  fd.append("caption_style", document.getElementById("capStyle").value);
+  fd.append("layout", layoutSel.value);
+  fd.append("trim", document.getElementById("trim").checked ? "1" : "0");
+  try{
+    const res = await fetch(`/api/regenerate/${currentJob}/${i}`, {method:"POST", body:fd});
+    if(!res.ok) throw new Error("Regenerate failed.");
+    const c = await res.json();
+    const s = c.score ?? 50;
+    card.querySelector("video").src = `/clips/${encodeURIComponent(c.file)}?t=${Date.now()}`;
+    card.querySelector(".t").textContent = c.hook || c.title;
+    const badge = card.querySelector(".badge-score");
+    badge.textContent = s;
+    badge.className = "badge-score " + (s>=75?"s-hi":s>=50?"s-mid":"s-lo");
+    card.querySelector(".dl").href = `/clips/${encodeURIComponent(c.file)}`;
+  }catch(err){ showError(err.message); }
+  finally{ btn.disabled = false; btn.textContent = "↻"; }
+});
 </script>
 </body>
 </html>

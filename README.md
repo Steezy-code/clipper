@@ -39,7 +39,9 @@ On macOS / Linux the run command is `./.venv/bin/python app.py`.
 - **Layout** — `Fill` (single speaker), `Split` (talking head on top, your gameplay/B-roll clip on the bottom — reveals a background picker), or `Stream (auto facecam)` (detects a Twitch-style webcam box and stacks facecam over gameplay automatically). Stream falls back to Fill if no facecam is found.
 - **Trim silence** — on by default; collapses dead air between words so clips feel tightly edited
 
-Each finished clip shows a virality score and an auto-generated hook headline.
+Each finished clip shows a virality score and an auto-generated hook headline. Hit the
+**↻** button on any clip to re-render just that one with the current settings (change the
+caption style or layout, then re-roll a single clip) — it reuses the transcript, so it's fast.
 
 ## First-time setup (only once)
 
