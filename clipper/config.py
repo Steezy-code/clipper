@@ -48,6 +48,7 @@ class Config:
     caption_gap_s: float = _env_float("CAPTION_GAP_S", 0.6)    # break line on pauses
     font_name: str = os.environ.get("FONT_NAME", "Arial")
     font_size: int = _env_int("FONT_SIZE", 120)
+    caption_style: str = os.environ.get("CAPTION_STYLE", "karaoke")
 
     # --- Encoding ---
     use_nvenc: bool = os.environ.get("USE_NVENC", "1") == "1"
@@ -59,3 +60,27 @@ class Config:
     @property
     def video_codec(self) -> str:
         return "h264_nvenc" if self.use_nvenc else "libx264"
+
+
+ASPECTS: dict[str, tuple[int, int]] = {
+    "9:16": (1080, 1920),
+    "1:1": (1080, 1080),
+    "16:9": (1920, 1080),
+}
+CAPTION_STYLES: tuple[str, ...] = ("karaoke", "boxed", "bold")
+
+
+def validate_overrides(form: dict) -> dict:
+    """Whitelist + clamp UI form fields into Config overrides. Bad values are dropped."""
+    out: dict = {}
+    if form.get("aspect") in ASPECTS:
+        out["target_w"], out["target_h"] = ASPECTS[form["aspect"]]
+    if form.get("caption_style") in CAPTION_STYLES:
+        out["caption_style"] = form["caption_style"]
+    n = form.get("num_clips")
+    if n is not None:
+        try:
+            out["num_clips"] = max(1, min(12, int(n)))
+        except (TypeError, ValueError):
+            pass
+    return out
