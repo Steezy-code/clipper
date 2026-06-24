@@ -45,6 +45,7 @@ def process(media_path: str, cfg: Config, on_progress: Progress = lambda p, m: N
     span = 60.0 / len(clips)
     for i, clip in enumerate(clips):
         base = 38 + int(i * span)
+        # ponytail: not job-namespaced (single-user/localhost tool); if concurrent jobs are ever supported, prefix name with the job id.
         name = f"{i+1:02d}-{_slug(clip['title'], f'clip-{i+1}')}"
         on_progress(base, f"Cutting clip {i+1} of {len(clips)}")
 

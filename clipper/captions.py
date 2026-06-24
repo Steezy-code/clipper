@@ -9,7 +9,7 @@ STYLES: dict[str, dict] = {
     # size_mult scales cfg.font_size; border_style 1=outline, 3=opaque box.
     "karaoke": {"size_mult": 1.0, "border_style": 1, "outline": 6, "shadow": 3, "bold": 1},
     "boxed":   {"size_mult": 0.92, "border_style": 3, "outline": 4, "shadow": 0, "bold": 1},
-    "bold":    {"size_mult": 1.18, "border_style": 1, "outline": 8, "shadow": 3, "bold": 1},
+    "bold":    {"size_mult": 1.05, "border_style": 1, "outline": 8, "shadow": 3, "bold": 1},
 }
 
 _STOP = {"the", "a", "an", "and", "or", "but", "to", "of", "in", "on", "for", "is",

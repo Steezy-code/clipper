@@ -56,6 +56,9 @@ def test_captions_styles_emphasis_hook():
         assert "Style: Hook," in text
         assert "Stop wasting time" in text          # hook burned in
         assert accent in text                        # active word / keyword emphasis
+        if style == "karaoke":
+            dlg = [ln for ln in text.splitlines() if ln.startswith("Dialogue:")]
+            assert any(ln.count(accent) >= 2 for ln in dlg), "keyword emphasis not applied independently of active word"
 
 
 def run() -> None:

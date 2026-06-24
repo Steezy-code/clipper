@@ -137,8 +137,8 @@ UI form (aspect, caption_style, num_clips)
 
 ## Testing
 
-`clipper/tests/test_captions.py` (no framework, `assert`-based, runnable as
-`python -m clipper.tests.test_captions`):
+`clipper/tests/test_quality.py` (no framework, `assert`-based, runnable as
+`python -m clipper.tests.test_quality`):
 - ASS output for a sample line contains the accent override for the active word and
   for at least one emphasized keyword.
 - A `Hook` dialogue event is present when a hook is supplied.
@@ -154,6 +154,6 @@ UI form (aspect, caption_style, num_clips)
 - `clipper/pipeline.py` — pass `hook` into caption writing; add `hook` + `score` to
   each result dict (small change, no structural rework)
 - `static/index.html` — controls panel + enriched cards
-- `clipper/tests/test_captions.py` — new self-check
+- `clipper/tests/test_quality.py` — new self-check
 
 Untouched: `transcribe.py`, `crop.py`, `ffmpeg_util.py`.
