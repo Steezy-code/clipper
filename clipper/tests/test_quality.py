@@ -62,6 +62,7 @@ def test_captions_styles_emphasis_hook():
         text = open(p, encoding="utf-8").read()
         assert "Style: Pop," in text
         assert "Style: Hook," in text
+        assert "WrapStyle: 0" in text                # captions wrap inside the frame
         assert "Stop wasting time" in text          # hook burned in
         assert accent in text                        # active word / keyword emphasis
         if style == "karaoke":

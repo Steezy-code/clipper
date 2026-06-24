@@ -44,7 +44,7 @@ class Config:
     # --- Captions ---
     accent_hex: str = os.environ.get("ACCENT_HEX", "#FF5C38")  # active word color
     base_hex: str = os.environ.get("BASE_HEX", "#FFFFFF")      # inactive words
-    words_per_caption: int = _env_int("WORDS_PER_CAPTION", 4)
+    words_per_caption: int = _env_int("WORDS_PER_CAPTION", 3)
     caption_gap_s: float = _env_float("CAPTION_GAP_S", 0.6)    # break line on pauses
     font_name: str = os.environ.get("FONT_NAME", "Arial")
     font_size: int = _env_int("FONT_SIZE", 120)

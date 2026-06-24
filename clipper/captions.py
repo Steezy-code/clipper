@@ -97,7 +97,7 @@ def write_ass(words: list[dict], path: str, cfg: Config, hook: str = "") -> str:
 ScriptType: v4.00+
 PlayResX: {cfg.target_w}
 PlayResY: {cfg.target_h}
-WrapStyle: 2
+WrapStyle: 0
 ScaledBorderAndShadow: yes
 
 [V4+ Styles]
