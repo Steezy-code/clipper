@@ -39,8 +39,10 @@ def index() -> str:
 
 @app.post("/api/upload")
 async def upload(file: UploadFile = File(...),
+                 background: UploadFile = File(None),
                  aspect: str = Form("9:16"),
                  caption_style: str = Form("karaoke"),
+                 layout: str = Form("fill"),
                  length: str = Form("auto"),
                  trim: str = Form("1"),
                  num_clips: str = Form(None)) -> JSONResponse:
@@ -50,9 +52,15 @@ async def upload(file: UploadFile = File(...),
     dest = UPLOADS / f"{job_id}-{Path(file.filename).name}"
     with dest.open("wb") as out:
         shutil.copyfileobj(file.file, out)
-    job_cfg = replace(base_cfg, **validate_overrides(
-        {"aspect": aspect, "caption_style": caption_style, "length": length,
-         "trim": trim, "num_clips": num_clips}))
+    bg_path = ""
+    if background is not None and background.filename:
+        bg_dest = UPLOADS / f"{job_id}-bg-{Path(background.filename).name}"
+        with bg_dest.open("wb") as out:
+            shutil.copyfileobj(background.file, out)
+        bg_path = str(bg_dest)
+    job_cfg = replace(base_cfg, background_path=bg_path, **validate_overrides(
+        {"aspect": aspect, "caption_style": caption_style, "layout": layout,
+         "length": length, "trim": trim, "num_clips": num_clips}))
     JOBS[job_id] = {"status": "running", "percent": 0, "message": "Queued",
                     "clips": [], "error": None}
     threading.Thread(target=_run, args=(job_id, str(dest), job_cfg), daemon=True).start()

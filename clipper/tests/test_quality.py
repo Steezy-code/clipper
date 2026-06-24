@@ -84,6 +84,26 @@ def test_zoom_track_off():
     assert z.max() == 1.0 and z.min() == 1.0           # no triggers -> no zoom
 
 
+def test_split_dims():
+    from clipper.layout import split_dims
+    top, bot = split_dims(1080, 1920, 0.5)
+    assert top % 2 == 0 and bot % 2 == 0          # both even for h264
+    assert top + bot == 1920                        # exactly fills the frame
+    assert abs(top - 960) <= 2
+    top2, bot2 = split_dims(1080, 1920, 0.6)
+    assert top2 + bot2 == 1920 and top2 > top       # bigger head fraction
+    # extreme ratios are clamped, still valid
+    t3, b3 = split_dims(1080, 1920, 0.99)
+    assert t3 + b3 == 1920 and b3 >= 2
+
+
+def test_validate_overrides_layout():
+    from clipper.config import validate_overrides
+    assert validate_overrides({"layout": "split"}) == {"layout": "split"}
+    assert validate_overrides({"layout": "fill"}) == {"layout": "fill"}
+    assert validate_overrides({"layout": "bogus"}) == {}
+
+
 def test_clean_score_hook_sort():
     from clipper.score import _clean
     from clipper.config import Config

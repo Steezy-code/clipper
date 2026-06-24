@@ -40,6 +40,11 @@ class Config:
     silence_max: float = _env_float("SILENCE_MAX", 0.5)    # collapse gaps longer than this
     silence_keep: float = _env_float("SILENCE_KEEP", 0.15)  # pad left around each cut
 
+    # --- Layout ---
+    layout: str = os.environ.get("LAYOUT", "fill")        # fill | split
+    split_ratio: float = _env_float("SPLIT_RATIO", 0.5)   # top (talking-head) fraction
+    background_path: str = ""   # set per-job when layout=split; path to the gameplay/B-roll clip
+
     # --- Reframe / face tracking ---
     target_w: int = _env_int("TARGET_W", 1080)   # output width  (9:16)
     target_h: int = _env_int("TARGET_H", 1920)   # output height
@@ -78,6 +83,7 @@ ASPECTS: dict[str, tuple[int, int]] = {
     "16:9": (1920, 1080),
 }
 CAPTION_STYLES: tuple[str, ...] = ("karaoke", "boxed", "bold")
+LAYOUTS: tuple[str, ...] = ("fill", "split")
 # length preset -> (min_clip_s, max_clip_s)
 LENGTHS: dict[str, tuple[float, float]] = {
     "auto": (15.0, 60.0),
@@ -94,6 +100,8 @@ def validate_overrides(form: dict) -> dict:
         out["target_w"], out["target_h"] = ASPECTS[form["aspect"]]
     if form.get("caption_style") in CAPTION_STYLES:
         out["caption_style"] = form["caption_style"]
+    if form.get("layout") in LAYOUTS:
+        out["layout"] = form["layout"]
     if form.get("length") in LENGTHS:
         out["min_clip_s"], out["max_clip_s"] = LENGTHS[form["length"]]
     if form.get("trim") is not None:

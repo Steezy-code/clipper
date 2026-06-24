@@ -66,9 +66,9 @@ def _largest_center(detector, kind, frame):
     return x + fw / 2.0, y + fh / 2.0
 
 
-def _crop_plan(w: int, h: int, cfg: Config) -> tuple[int, int, str]:
-    """Return (crop_w, crop_h, axis) for the largest 9:16 window that fits."""
-    target = cfg.target_w / cfg.target_h
+def _crop_plan(w: int, h: int, tw: int, th: int) -> tuple[int, int, str]:
+    """Return (crop_w, crop_h, axis) for the largest tw:th window that fits."""
+    target = tw / th
     if w / h > target:           # source is wider -> crop width, slide on x
         crop_h = h
         crop_w = even(h * target)
@@ -152,27 +152,32 @@ def _zoom_track(n_frames: int, fps: float, triggers, cfg: Config) -> np.ndarray:
 
 
 def reframe(clip_path: str, dst: str, cfg: Config, ass_path: str | None = None,
-            zoom_at: list[float] | None = None) -> str:
+            zoom_at: list[float] | None = None,
+            out_w: int | None = None, out_h: int | None = None) -> str:
     """Crop clip_path to vertical, following the speaker, audio preserved.
 
     If ass_path is given, the captions are burned in this same encode pass instead of
     a separate ffmpeg round trip - one decode+encode per clip instead of two.
     zoom_at is a list of timestamps (seconds) to punch-in on.
+    out_w/out_h override the output size (defaults to cfg.target_w/h); used for the
+    top region of a split layout.
     """
+    ow = out_w or cfg.target_w
+    oh = out_h or cfg.target_h
     cap = cv2.VideoCapture(clip_path)
     w = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
     h = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
     fps = cap.get(cv2.CAP_PROP_FPS) or 30.0
     n_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
 
-    crop_w, crop_h, axis = _crop_plan(w, h, cfg)
+    crop_w, crop_h, axis = _crop_plan(w, h, ow, oh)
     centers = _track_centers(cap, n_frames, w, h, axis, crop_w, crop_h, cfg)
     zoom = _zoom_track(n_frames, fps, zoom_at if cfg.punch_zoom else None, cfg)
 
     Path(dst).parent.mkdir(parents=True, exist_ok=True)
     cmd = ["ffmpeg", "-y",
            "-f", "rawvideo", "-pixel_format", "bgr24",
-           "-video_size", f"{cfg.target_w}x{cfg.target_h}", "-framerate", f"{fps:.4f}",
+           "-video_size", f"{ow}x{oh}", "-framerate", f"{fps:.4f}",
            "-i", "-", "-i", clip_path,
            "-map", "0:v:0", "-map", "1:a:0?"]
     if ass_path:
@@ -198,7 +203,7 @@ def reframe(clip_path: str, dst: str, cfg: Config, ass_path: str | None = None,
             y0 = int(round(c - zh / 2.0)); x0 = (w - zw) // 2
         x0 = max(0, min(x0, w - zw)); y0 = max(0, min(y0, h - zh))
         window = frame[y0:y0 + zh, x0:x0 + zw]
-        out = cv2.resize(window, (cfg.target_w, cfg.target_h), interpolation=cv2.INTER_AREA)
+        out = cv2.resize(window, (ow, oh), interpolation=cv2.INTER_AREA)
         ff.stdin.write(out.tobytes())
 
     cap.release()

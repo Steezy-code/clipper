@@ -93,6 +93,8 @@
   .chk{display:inline-flex;align-items:center;gap:8px;font-size:14px;color:var(--text);
     background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:9px 12px;cursor:pointer}
   .chk input{accent-color:var(--accent);width:16px;height:16px;cursor:pointer}
+  .bgpick{margin:14px 2px 0}
+  .bgpick .chk{cursor:pointer}
   .badge-score{font-family:var(--display);font-weight:600;font-size:11px;border-radius:999px;
     padding:3px 9px;letter-spacing:.02em}
   .s-hi{background:rgba(61,220,151,.16);color:var(--done)}
@@ -212,6 +214,13 @@
       </select>
     </div>
     <div class="ctrl">
+      <span class="clab">Layout</span>
+      <select id="layout">
+        <option value="fill">Fill</option>
+        <option value="split">Split</option>
+      </select>
+    </div>
+    <div class="ctrl">
       <span class="clab">Length</span>
       <select id="length">
         <option value="auto">Auto (15–60s)</option>
@@ -228,6 +237,10 @@
       <span class="clab">Trim</span>
       <label class="chk"><input type="checkbox" id="trim" checked /> Silence</label>
     </div>
+  </div>
+  <div class="bgpick hidden" id="bgpick">
+    <label class="chk" for="bgfile"><i style="color:var(--accent)">⊕</i>&nbsp;<span id="bglabel">Choose background video for split</span></label>
+    <input type="file" id="bgfile" accept="video/*" style="display:none" />
   </div>
 
   <section id="run" class="hidden">
@@ -309,6 +322,17 @@ document.querySelectorAll("#aspect button").forEach(b=>b.addEventListener("click
   b.classList.add("on"); aspect = b.dataset.v;
 }));
 
+const layoutSel = document.getElementById("layout");
+const bgpick = document.getElementById("bgpick");
+const bgfile = document.getElementById("bgfile");
+const bglabel = document.getElementById("bglabel");
+layoutSel.addEventListener("change", ()=>{
+  bgpick.classList.toggle("hidden", layoutSel.value !== "split");
+});
+bgfile.addEventListener("change", ()=>{
+  bglabel.textContent = bgfile.files[0] ? bgfile.files[0].name : "Choose background video for split";
+});
+
 async function start(file){
   errEl.classList.add("hidden");
   grid.innerHTML = ""; note.classList.add("hidden"); resultsHead.classList.add("hidden");
@@ -322,6 +346,8 @@ async function start(file){
   fd.append("length", document.getElementById("length").value);
   fd.append("num_clips", document.getElementById("numClips").value);
   fd.append("trim", document.getElementById("trim").checked ? "1" : "0");
+  fd.append("layout", layoutSel.value);
+  if(layoutSel.value === "split" && bgfile.files[0]) fd.append("background", bgfile.files[0]);
   let job;
   try{
     const res = await fetch("/api/upload", {method:"POST", body:fd});

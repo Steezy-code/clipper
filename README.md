@@ -36,6 +36,7 @@ On macOS / Linux the run command is `./.venv/bin/python app.py`.
 - **Captions** — `Karaoke`, `Boxed` (bar behind text), or `Bold`
 - **Length** — `Auto (15–60s)`, `Under 30s`, `30–60s`, or `60–90s`
 - **Clips** — how many to cut (1–12)
+- **Layout** — `Fill` (single speaker) or `Split` (talking head on top, your gameplay/B-roll clip on the bottom). Choosing Split reveals a picker for the background video.
 - **Trim silence** — on by default; collapses dead air between words so clips feel tightly edited
 
 Each finished clip shows a virality score and an auto-generated hook headline.
@@ -71,6 +72,7 @@ Most things are now in the UI. For the rest, set environment variables before la
 | `SILENCE_MAX` | `0.5` | Gaps longer than this (seconds) get collapsed when trimming. |
 | `PUNCH_ZOOM` | `1` | Subtle zoom-in on emphasized words. Set `0` to disable motion. |
 | `ZOOM_AMOUNT` | `0.08` | Max extra zoom at a punch (0.08 = 8%). |
+| `SPLIT_RATIO` | `0.5` | Talking-head fraction of the frame in Split layout (top half). |
 | `SMOOTH_ALPHA` | `0.12` | Camera glide. **Lower = smoother but laggier**, higher = snappier. |
 | `ACCENT_HEX` | `#FF5C38` | Active-word caption color. |
 | `USE_NVENC` | `1` | Set `0` to encode on CPU if you have no NVIDIA GPU. |

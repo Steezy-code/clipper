@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Callable
 
 from .config import Config
-from . import ffmpeg_util, transcribe, score, crop, captions, trim
+from . import ffmpeg_util, transcribe, score, crop, captions, trim, layout
 
 Progress = Callable[[int, str], None]
 
@@ -54,10 +54,20 @@ def process(media_path: str, cfg: Config, on_progress: Progress = lambda p, m: N
         cw = trim.remap(abs_words, spans)
         ass = captions.write_ass(cw, str(work / f"{name}.ass"), cfg, hook=clip.get("hook", ""))
 
-        # reframe burns the captions in the same encode pass (no separate caption round trip)
         on_progress(base + int(span * 0.7), f"Reframing clip {i+1}")
         zoom_at = captions.emphasis_times(cw, cfg) if cfg.punch_zoom else None
-        final = crop.reframe(seg, str(out / f"{name}.mp4"), cfg, ass_path=ass, zoom_at=zoom_at)
+        use_split = (cfg.layout == "split" and cfg.background_path
+                     and Path(cfg.background_path).exists())
+        if use_split:
+            top_h, bottom_h = layout.split_dims(cfg.target_w, cfg.target_h, cfg.split_ratio)
+            head = crop.reframe(seg, str(work / f"{name}-head.mp4"), cfg,
+                                ass_path=None, zoom_at=zoom_at,
+                                out_w=cfg.target_w, out_h=top_h)
+            final = layout.compose_split(head, cfg.background_path, ass,
+                                         str(out / f"{name}.mp4"), cfg, bottom_h)
+        else:
+            # reframe burns the captions in the same encode pass (no separate caption round trip)
+            final = crop.reframe(seg, str(out / f"{name}.mp4"), cfg, ass_path=ass, zoom_at=zoom_at)
 
         results.append({
             "file": Path(final).name,
