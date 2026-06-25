@@ -1,5 +1,6 @@
 """Web server: drag a video onto the page, watch it clip, download the results."""
 from __future__ import annotations
+import json
 import shutil
 import threading
 import uuid
@@ -10,10 +11,20 @@ import uvicorn
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException
 from fastapi.responses import HTMLResponse, JSONResponse, FileResponse
 
-from clipper.config import Config, validate_overrides
+from clipper.config import Config, validate_overrides, validate_brand
 from clipper import pipeline
 
-base_cfg = Config()
+BRAND_FILE = Path("brand.json")
+
+
+def _load_brand() -> dict:
+    try:
+        return validate_brand(json.loads(BRAND_FILE.read_text(encoding="utf-8")))
+    except Exception:
+        return {}
+
+
+base_cfg = replace(Config(), **_load_brand())   # apply saved brand defaults at startup
 app = FastAPI(title="clipper")
 STATIC = Path(__file__).parent / "static"
 UPLOADS = Path("uploads"); UPLOADS.mkdir(exist_ok=True)
@@ -101,6 +112,24 @@ def regenerate(job_id: str, idx: int,
     if idx < len(job.get("clips", [])):
         job["clips"][idx] = res
     return JSONResponse(res)
+
+
+@app.get("/api/brand")
+def get_brand() -> JSONResponse:
+    return JSONResponse({"accent_hex": base_cfg.accent_hex,
+                         "caption_style": base_cfg.caption_style,
+                         "font_name": base_cfg.font_name})
+
+
+@app.post("/api/brand")
+def set_brand(accent_hex: str = Form(...), caption_style: str = Form(...),
+              font_name: str = Form(...)) -> JSONResponse:
+    global base_cfg
+    v = validate_brand({"accent_hex": accent_hex, "caption_style": caption_style,
+                        "font_name": font_name})
+    BRAND_FILE.write_text(json.dumps(v), encoding="utf-8")
+    base_cfg = replace(base_cfg, **v)
+    return JSONResponse({"ok": True, **v})
 
 
 @app.get("/clips/{name}")

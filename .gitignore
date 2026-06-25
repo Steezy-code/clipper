@@ -11,3 +11,6 @@ _smoketest/
 
 # Auto-downloaded model (YuNet) — fetched on first run
 clipper/models/
+
+# Per-user saved brand kit
+brand.json

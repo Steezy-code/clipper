@@ -124,6 +124,14 @@ def test_facecam_rect():
     assert _facecam_rect([[200, 100, 1000, 900]] * 4, 1920, 1080) is None
 
 
+def test_validate_brand():
+    from clipper.config import validate_brand
+    v = validate_brand({"accent_hex": "#aabbcc", "caption_style": "bold", "font_name": "  Impact "})
+    assert v == {"accent_hex": "#AABBCC", "caption_style": "bold", "font_name": "Impact"}
+    assert validate_brand({"accent_hex": "red", "caption_style": "nope", "font_name": "  "}) == {}
+    assert validate_brand({"accent_hex": "#FF5C38"}) == {"accent_hex": "#FF5C38"}
+
+
 def test_clean_score_hook_sort():
     from clipper.score import _clean
     from clipper.config import Config

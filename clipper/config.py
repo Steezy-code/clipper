@@ -1,7 +1,10 @@
 """Central configuration. Everything tunable lives here or in env vars."""
 from __future__ import annotations
 import os
+import re
 from dataclasses import dataclass
+
+_HEX = re.compile(r"^#[0-9a-fA-F]{6}$")
 
 
 def _env_float(key: str, default: float) -> float:
@@ -112,4 +115,18 @@ def validate_overrides(form: dict) -> dict:
             out["num_clips"] = max(1, min(12, int(n)))
         except (TypeError, ValueError):
             pass
+    return out
+
+
+def validate_brand(form: dict) -> dict:
+    """Whitelist the brand-kit fields into Config overrides (accent color, caption style, font)."""
+    out: dict = {}
+    a = form.get("accent_hex")
+    if isinstance(a, str) and _HEX.match(a):
+        out["accent_hex"] = a.upper()
+    if form.get("caption_style") in CAPTION_STYLES:
+        out["caption_style"] = form["caption_style"]
+    f = form.get("font_name")
+    if isinstance(f, str) and f.strip():
+        out["font_name"] = f.strip()[:64]
     return out

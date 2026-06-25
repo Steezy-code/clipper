@@ -43,6 +43,9 @@ Each finished clip shows a virality score and an auto-generated hook headline. H
 **↻** button on any clip to re-render just that one with the current settings (change the
 caption style or layout, then re-roll a single clip) — it reuses the transcript, so it's fast.
 
+Open **Brand kit** under the controls to set your accent color, caption font, and default
+caption style once; it's saved to `brand.json` and applied to every future job.
+
 ## First-time setup (only once)
 
 You need **Python 3.10+**, **ffmpeg**, and **Ollama** with a chat model pulled.
