@@ -87,15 +87,19 @@ def render_clip(media_path: str, words: list[dict], clip: dict, name: str, cfg: 
 
 
 def render_all(media_path: str, transcript: dict, clips: list, cfg: Config,
-               on_progress: Progress = lambda p, m: None) -> list[dict]:
-    """Stages 3-4 for every clip, with progress."""
+               on_progress: Progress = lambda p, m: None,
+               on_clip: Callable[[dict], None] = lambda r: None) -> list[dict]:
+    """Stages 3-4 for every clip, with progress. on_clip fires as each clip finishes
+    so the UI can show clips appearing one by one."""
     results = []
     span = 60.0 / len(clips)
     for i, clip in enumerate(clips):
         base = 38 + int(i * span)
         on_progress(base, f"Cutting clip {i+1} of {len(clips)}")
         on_progress(base + int(span * 0.5), f"Reframing clip {i+1}")
-        results.append(render_clip(media_path, transcript["words"], clip, clip_name(clip, i), cfg))
+        res = render_clip(media_path, transcript["words"], clip, clip_name(clip, i), cfg)
+        results.append(res)
+        on_clip(res)
     on_progress(100, f"Done - {len(results)} clips ready")
     return results
 

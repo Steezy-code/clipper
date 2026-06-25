@@ -31,8 +31,10 @@ def _run(job_id: str, path: str, cfg: Config) -> None:
         transcript, scored = pipeline.analyze(path, cfg, progress)
         # keep the slow-stage results so a single clip can be re-rendered later
         JOB_STATE[job_id] = {"transcript": transcript, "scored": scored, "media": path, "cfg": cfg}
-        clips = pipeline.render_all(path, transcript, scored, cfg, progress)
-        JOBS[job_id].update(status="done", percent=100, clips=clips)
+        JOBS[job_id]["clips"] = []   # filled incrementally so the UI shows clips as they finish
+        pipeline.render_all(path, transcript, scored, cfg, progress,
+                            on_clip=lambda r: JOBS[job_id]["clips"].append(r))
+        JOBS[job_id].update(status="done", percent=100)
     except Exception as exc:  # surface the real reason to the UI
         JOBS[job_id].update(status="error", error=str(exc))
 

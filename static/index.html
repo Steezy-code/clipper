@@ -367,6 +367,7 @@ async function start(file){
 }
 
 function poll(job){
+  let shown = 0;
   const timer = setInterval(async ()=>{
     let s;
     try{ s = await (await fetch("/api/status/"+job)).json(); }
@@ -376,10 +377,13 @@ function poll(job){
     msgEl.textContent = s.message;
     paint(stageFromMessage(s.message));
 
+    if(s.clips && s.clips.length > shown){   // clips appear as they finish
+      render(s.clips); shown = s.clips.length;
+    }
     if(s.status === "done"){
       clearInterval(timer);
       paint(5);
-      render(s.clips);
+      if(s.clips) render(s.clips);
     }else if(s.status === "error"){
       clearInterval(timer);
       showError(s.error || "Something went wrong while processing.");
