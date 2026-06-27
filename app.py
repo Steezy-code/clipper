@@ -8,8 +8,12 @@ from dataclasses import replace
 from pathlib import Path
 
 import uvicorn
+from dotenv import load_dotenv
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException
 from fastapi.responses import HTMLResponse, JSONResponse, FileResponse
+
+# load a local .env (e.g. PEXELS_API_KEY) BEFORE importing config, which snapshots env vars
+load_dotenv()
 
 from clipper.config import Config, validate_overrides, validate_brand
 from clipper import pipeline

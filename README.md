@@ -28,8 +28,14 @@ Then open **<http://localhost:8765>** and drop a video. Finished clips land in t
 > Tip: if you just installed ffmpeg, open a **fresh** terminal first so Windows picks it
 > up on your PATH.
 
-For **auto B-roll**, get a free key at <https://www.pexels.com/api/> and set it before launching:
-`$env:PEXELS_API_KEY="your_key"` (Windows) / `export PEXELS_API_KEY="your_key"` (mac/Linux).
+For **auto B-roll**, get a free key at <https://www.pexels.com/api/>. Easiest: copy
+`.env.example` to `.env` and put your key there — it's gitignored and loaded automatically
+every launch:
+```
+PEXELS_API_KEY=your_key_here
+```
+(Or set it per-session: `$env:PEXELS_API_KEY = Read-Host "key"` on Windows — `Read-Host`
+keeps it out of your shell history.)
 
 On macOS / Linux the run command is `./.venv/bin/python app.py`.
 

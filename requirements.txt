@@ -5,6 +5,7 @@ requests>=2.31
 fastapi>=0.110
 uvicorn[standard]>=0.29
 python-multipart>=0.0.9
+python-dotenv>=1.0
 
 # GPU transcription on Windows: faster-whisper/ctranslate2 need these CUDA runtime DLLs.
 # Remove both lines if you run Whisper on CPU only (WHISPER_DEVICE=cpu).

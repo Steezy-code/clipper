@@ -14,3 +14,6 @@ clipper/models/
 
 # Per-user saved brand kit
 brand.json
+
+# Local secrets (API keys) — never commit
+.env
