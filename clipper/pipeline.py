@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Callable
 
 from .config import Config
-from . import ffmpeg_util, transcribe, score, crop, captions, trim, layout
+from . import ffmpeg_util, transcribe, score, crop, captions, trim, layout, broll
 
 Progress = Callable[[int, str], None]
 
@@ -60,6 +60,11 @@ def render_clip(media_path: str, words: list[dict], clip: dict, name: str, cfg: 
     use_split = (cfg.layout == "split" and cfg.background_path
                  and Path(cfg.background_path).exists())
     facecam = crop.detect_facecam(seg, cfg) if cfg.layout == "stream" else None
+    # B-roll cutaways apply to the single-speaker (fill) layout only
+    broll_items, credits = [], []
+    if cfg.broll and broll.have_key(cfg) and not use_split and not facecam:
+        broll_items, credits = broll.gather(cw, cfg, work / "broll")
+
     if use_split:
         top_h, bottom_h = layout.split_dims(cfg.target_w, cfg.target_h, cfg.split_ratio)
         head = crop.reframe(seg, str(work / f"{name}-head.mp4"), cfg,
@@ -70,6 +75,15 @@ def render_clip(media_path: str, words: list[dict], clip: dict, name: str, cfg: 
         top_h, bottom_h = layout.split_dims(cfg.target_w, cfg.target_h, cfg.split_ratio)
         final = layout.compose_stream(seg, facecam, ass, str(out / f"{name}.mp4"),
                                       cfg, top_h, bottom_h)
+    elif broll_items:
+        # render captionless, overlay cutaways, then burn captions on top so they stay visible
+        base = crop.reframe(seg, str(work / f"{name}-base.mp4"), cfg,
+                            ass_path=None, zoom_at=zoom_at)
+        final = broll.add_broll(base, ass, broll_items, str(out / f"{name}.mp4"), cfg)
+        lines = [f"{c['term']}: {c['photographer']} - {c['url']}" for c in credits]
+        Path(out / f"{name}.credits.txt").write_text(
+            "Stock video via Pexels (https://pexels.com)\n" + "\n".join(lines) + "\n",
+            encoding="utf-8")
     else:
         # reframe burns the captions in the same encode pass (no separate caption round trip)
         final = crop.reframe(seg, str(out / f"{name}.mp4"), cfg, ass_path=ass, zoom_at=zoom_at)

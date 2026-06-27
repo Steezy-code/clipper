@@ -63,6 +63,7 @@ async def upload(file: UploadFile = File(...),
                  layout: str = Form("fill"),
                  length: str = Form("auto"),
                  trim: str = Form("1"),
+                 broll: str = Form("0"),
                  num_clips: str = Form(None)) -> JSONResponse:
     if not file.filename:
         raise HTTPException(400, "No file provided.")
@@ -78,7 +79,7 @@ async def upload(file: UploadFile = File(...),
         bg_path = str(bg_dest)
     job_cfg = replace(base_cfg, background_path=bg_path, **validate_overrides(
         {"aspect": aspect, "caption_style": caption_style, "layout": layout,
-         "length": length, "trim": trim, "num_clips": num_clips}))
+         "length": length, "trim": trim, "broll": broll, "num_clips": num_clips}))
     JOBS[job_id] = {"status": "running", "percent": 0, "message": "Queued",
                     "clips": [], "error": None}
     threading.Thread(target=_run, args=(job_id, str(dest), job_cfg), daemon=True).start()

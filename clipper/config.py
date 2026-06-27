@@ -38,6 +38,13 @@ class Config:
     min_clip_s: float = _env_float("MIN_CLIP_S", 15.0)
     max_clip_s: float = _env_float("MAX_CLIP_S", 60.0)
 
+    # --- Auto B-roll (Pexels stock video) ---
+    broll: bool = os.environ.get("BROLL", "0") == "1"
+    pexels_key: str = os.environ.get("PEXELS_API_KEY", "")
+    broll_max: int = _env_int("BROLL_MAX", 3)          # max cutaways per clip
+    broll_dur: float = _env_float("BROLL_DUR", 2.5)    # seconds per cutaway
+    broll_gap: float = _env_float("BROLL_GAP", 5.0)    # min seconds between cutaways
+
     # --- Silence trimming ---
     trim_silence: bool = os.environ.get("TRIM_SILENCE", "1") == "1"
     silence_max: float = _env_float("SILENCE_MAX", 0.5)    # collapse gaps longer than this
@@ -109,6 +116,8 @@ def validate_overrides(form: dict) -> dict:
         out["min_clip_s"], out["max_clip_s"] = LENGTHS[form["length"]]
     if form.get("trim") is not None:
         out["trim_silence"] = form["trim"] == "1"
+    if form.get("broll") is not None:
+        out["broll"] = form["broll"] == "1"
     n = form.get("num_clips")
     if n is not None:
         try:

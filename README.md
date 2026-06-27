@@ -28,6 +28,9 @@ Then open **<http://localhost:8765>** and drop a video. Finished clips land in t
 > Tip: if you just installed ffmpeg, open a **fresh** terminal first so Windows picks it
 > up on your PATH.
 
+For **auto B-roll**, get a free key at <https://www.pexels.com/api/> and set it before launching:
+`$env:PEXELS_API_KEY="your_key"` (Windows) / `export PEXELS_API_KEY="your_key"` (mac/Linux).
+
 On macOS / Linux the run command is `./.venv/bin/python app.py`.
 
 ## Controls (set per video, right under the drop zone)
@@ -38,6 +41,7 @@ On macOS / Linux the run command is `./.venv/bin/python app.py`.
 - **Clips** — how many to cut (1–12)
 - **Layout** — `Fill` (single speaker), `Split` (talking head on top, your gameplay/B-roll clip on the bottom — reveals a background picker), or `Stream (auto facecam)` (detects a Twitch-style webcam box and stacks facecam over gameplay automatically). Stream falls back to Fill if no facecam is found.
 - **Trim silence** — on by default; collapses dead air between words so clips feel tightly edited
+- **B-roll** — off by default; cuts to relevant Pexels stock video on keyword moments (Fill layout only). Needs a free `PEXELS_API_KEY` (see below); without it, the checkbox is ignored. Writes a `clips/<name>.credits.txt` with attribution.
 
 Each finished clip shows a virality score and an auto-generated hook headline. Hit the
 **↻** button on any clip to re-render just that one with the current settings (change the
@@ -78,6 +82,9 @@ Most things are now in the UI. For the rest, set environment variables before la
 | `PUNCH_ZOOM` | `1` | Subtle zoom-in on emphasized words. Set `0` to disable motion. |
 | `ZOOM_AMOUNT` | `0.08` | Max extra zoom at a punch (0.08 = 8%). |
 | `SPLIT_RATIO` | `0.5` | Talking-head fraction of the frame in Split layout (top half). |
+| `PEXELS_API_KEY` | _(unset)_ | Free key from pexels.com/api; enables auto B-roll. |
+| `BROLL_MAX` | `3` | Max stock cutaways per clip. |
+| `BROLL_DUR` | `2.5` | Seconds per cutaway. |
 | `SMOOTH_ALPHA` | `0.12` | Camera glide. **Lower = smoother but laggier**, higher = snappier. |
 | `ACCENT_HEX` | `#FF5C38` | Active-word caption color. |
 | `USE_NVENC` | `1` | Set `0` to encode on CPU if you have no NVIDIA GPU. |

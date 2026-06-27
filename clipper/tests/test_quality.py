@@ -124,6 +124,42 @@ def test_facecam_rect():
     assert _facecam_rect([[200, 100, 1000, 900]] * 4, 1920, 1080) is None
 
 
+def test_broll_keywords():
+    from clipper.broll import keywords
+    from clipper.config import Config
+    cfg = Config()  # broll_max 3, broll_gap 5.0
+    words = [
+        {"word": "the", "start": 0.0, "end": 0.2},        # stopword
+        {"word": "mountains", "start": 1.0, "end": 1.5},   # keep @1.0
+        {"word": "are", "start": 2.0, "end": 2.2},         # stopword
+        {"word": "beautiful", "start": 3.0, "end": 3.5},   # within gap of 1.0 -> skip
+        {"word": "ocean", "start": 7.0, "end": 7.4},       # keep @7.0
+        {"word": "ocean", "start": 13.0, "end": 13.4},     # dup -> skip
+        {"word": "forest", "start": 14.0, "end": 14.5},    # keep @14.0
+        {"word": "rivers", "start": 20.0, "end": 20.5},    # would be 4th -> capped at 3
+    ]
+    kw = keywords(words, cfg)
+    assert [t for t, _ in kw] == ["mountains", "ocean", "forest"], kw
+    assert all(b - a >= cfg.broll_gap for (_, a), (_, b) in zip(kw, kw[1:]))
+
+
+def test_broll_pick_file():
+    from clipper.broll import pick_file
+    video = {"video_files": [
+        {"width": 1280, "height": 720, "link": "land-hd"},     # landscape
+        {"width": 1080, "height": 1920, "link": "portrait-fhd"},  # portrait, ~1920
+        {"width": 2160, "height": 3840, "link": "portrait-4k"},   # portrait, huge
+    ]}
+    assert pick_file(video) == "portrait-fhd"      # prefers portrait near 1920
+    assert pick_file({"video_files": []}) is None
+
+
+def test_validate_overrides_broll():
+    from clipper.config import validate_overrides
+    assert validate_overrides({"broll": "1"}) == {"broll": True}
+    assert validate_overrides({"broll": "0"}) == {"broll": False}
+
+
 def test_validate_brand():
     from clipper.config import validate_brand
     v = validate_brand({"accent_hex": "#aabbcc", "caption_style": "bold", "font_name": "  Impact "})

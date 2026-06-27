@@ -258,6 +258,10 @@
       <span class="clab">Trim</span>
       <label class="chk"><input type="checkbox" id="trim" checked /> Silence</label>
     </div>
+    <div class="ctrl">
+      <span class="clab">B-roll</span>
+      <label class="chk"><input type="checkbox" id="broll" /> Stock</label>
+    </div>
   </div>
   <div class="bgpick hidden" id="bgpick">
     <label class="chk" for="bgfile"><i style="color:var(--accent)">⊕</i>&nbsp;<span id="bglabel">Choose background video for split</span></label>
@@ -411,6 +415,7 @@ async function start(file){
   fd.append("length", document.getElementById("length").value);
   fd.append("num_clips", document.getElementById("numClips").value);
   fd.append("trim", document.getElementById("trim").checked ? "1" : "0");
+  fd.append("broll", document.getElementById("broll").checked ? "1" : "0");
   fd.append("layout", layoutSel.value);
   if(layoutSel.value === "split" && bgfile.files[0]) fd.append("background", bgfile.files[0]);
   let job;
