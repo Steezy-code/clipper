@@ -1,0 +1,4 @@
+Launching the app solo:
+
+ ollama serve                          # once per reboot
+.\.venv\Scripts\python.exe app.py     # then open http://localhost:8765
