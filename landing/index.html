@@ -1,0 +1,439 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>clipper — local AI short-form clipper</title>
+<meta name="description" content="Drop in a long video. Get back scored, captioned, vertical shorts — entirely on your own machine. No cloud, no subscription." />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;700;800;900&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --asphalt:#14171E; --asphalt-2:#0A0C10; --asphalt-line:#282D38; --asphalt-line-2:#353B47;
+    --paper:#F5F3EC; --paper-2:#ECE8DC; --paper-line:rgba(20,23,30,.11); --paper-line-2:rgba(20,23,30,.18);
+    --ink:#191B20; --ink-soft:#5B5E66;
+    --cream:#F5F3EC; --cream-soft:#B9BAC0;
+    --accent:#FF5C38; --accent-2:#FFB020; --good:#3DDC97;
+    --display:"Big Shoulders Display", sans-serif;
+    --body:"IBM Plex Sans", ui-sans-serif, sans-serif;
+    --mono:"IBM Plex Mono", ui-monospace, monospace;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--body);
+    line-height:1.6;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+  img{max-width:100%;display:block}
+  a{color:inherit}
+  .num{font-family:var(--mono);font-variant-numeric:tabular-nums;font-feature-settings:"tnum"}
+  .wrap{max-width:1160px;margin:0 auto;padding:0 28px}
+  @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+
+  /* ---------- shared blueprint textures ---------- */
+  .grid-dark{background-image:
+    linear-gradient(var(--asphalt-line) 1px,transparent 1px),
+    linear-gradient(90deg,var(--asphalt-line) 1px,transparent 1px);
+    background-size:44px 44px; background-position:-1px -1px}
+  .grid-light{background-image:
+    linear-gradient(var(--paper-line) 1px,transparent 1px),
+    linear-gradient(90deg,var(--paper-line) 1px,transparent 1px);
+    background-size:44px 44px; background-position:-1px -1px}
+
+  /* ---------- reveal ---------- */
+  .rv{opacity:0;transform:translateY(22px);transition:opacity .7s ease,transform .7s ease}
+  .rv.in{opacity:1;transform:none}
+
+  /* ============ NAV ============ */
+  nav{position:sticky;top:0;z-index:40;background:rgba(20,23,30,.92);backdrop-filter:blur(8px);
+    border-bottom:1px solid var(--asphalt-line)}
+  .navrow{display:flex;align-items:center;justify-content:space-between;padding:16px 28px;
+    max-width:1160px;margin:0 auto}
+  .mark{font-family:var(--display);font-weight:800;font-size:24px;letter-spacing:-.01em;
+    color:var(--cream);text-decoration:none;display:flex;align-items:center;gap:2px}
+  .mark i{font-style:normal;color:var(--accent)}
+  .navlinks{display:flex;align-items:center;gap:28px}
+  .navlinks a{font-family:var(--mono);font-size:12.5px;letter-spacing:.04em;color:var(--cream-soft);
+    text-decoration:none;transition:color .15s}
+  .navlinks a:hover{color:var(--cream)}
+  .btn-gh{display:inline-flex;align-items:center;gap:8px;background:var(--accent);color:var(--asphalt-2);
+    font-family:var(--display);font-weight:700;font-size:15px;letter-spacing:.01em;
+    padding:9px 18px;border-radius:3px;text-decoration:none;transition:background .15s,transform .12s;
+    white-space:nowrap}
+  .btn-gh:hover{background:var(--accent-2)} .btn-gh:active{transform:scale(.97)}
+  @media (max-width:680px){
+    .navlinks a:not(.btn-gh){display:none}
+    .navrow{padding:14px 20px}
+    .navlinks{gap:0}
+    .btn-gh{padding:8px 14px;font-size:13px}
+  }
+
+  /* ============ HERO (asphalt) ============ */
+  .hero{background:var(--asphalt);color:var(--cream);position:relative;overflow:hidden;
+    padding:88px 0 96px}
+  .hero::before{content:"";position:absolute;inset:0;
+    background:radial-gradient(720px 460px at 14% 8%,rgba(255,92,56,.14),transparent 60%);
+    pointer-events:none}
+  .hero .grid-dark{position:absolute;inset:0;opacity:.55;
+    mask-image:linear-gradient(180deg,black,transparent 85%)}
+  .hero-inner{position:relative;display:grid;grid-template-columns:1.15fr .85fr;gap:56px;align-items:center}
+  @media (max-width:880px){.hero-inner{grid-template-columns:1fr}}
+  .eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.22em;text-transform:uppercase;
+    color:var(--accent);margin:0 0 20px;display:flex;align-items:center;gap:10px}
+  .eyebrow .dot{width:6px;height:6px;border-radius:50%;background:var(--good);
+    box-shadow:0 0 0 0 rgba(61,220,151,.5);animation:pulse 2.4s infinite}
+  @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(61,220,151,.45)}70%{box-shadow:0 0 0 6px rgba(61,220,151,0)}100%{box-shadow:0 0 0 0 rgba(61,220,151,0)}}
+  h1{font-family:var(--display);font-weight:900;font-size:clamp(42px,6vw,74px);line-height:.94;
+    letter-spacing:-.01em;margin:0 0 24px;text-transform:uppercase}
+  h1 .grey{color:var(--cream-soft)}
+  .lede{font-size:17.5px;color:var(--cream-soft);max-width:50ch;margin:0 0 34px}
+  .lede b{color:var(--cream);font-weight:600}
+  .cta-row{display:flex;flex-wrap:wrap;gap:14px;margin-bottom:36px}
+  .btn-ghost{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--asphalt-line-2);
+    color:var(--cream);font-family:var(--mono);font-size:13px;letter-spacing:.02em;
+    padding:11px 20px;border-radius:3px;text-decoration:none;transition:border-color .15s,color .15s}
+  .btn-ghost:hover{border-color:var(--accent);color:var(--accent)}
+  .cta-row .btn-gh{padding:12px 22px;font-size:16px}
+  .hero-stats{display:flex;gap:32px;flex-wrap:wrap;padding-top:26px;border-top:1px solid var(--asphalt-line)}
+  .hstat b{display:block;font-family:var(--mono);font-size:26px;color:var(--cream);letter-spacing:-.01em}
+  .hstat span{display:block;font-size:11.5px;color:var(--cream-soft);letter-spacing:.06em;
+    text-transform:uppercase;margin-top:2px}
+
+  /* ---- signature element: virality-score gauge ---- */
+  .gauge-card{background:var(--asphalt-2);border:1px solid var(--asphalt-line);border-radius:6px;
+    padding:28px 26px 24px;position:relative}
+  .gauge-card .tag{font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;
+    color:var(--cream-soft);display:flex;justify-content:space-between;margin-bottom:6px}
+  .gauge-card .tag b{color:var(--accent)}
+  .gauge-wrap{position:relative;display:grid;place-items:center;margin:6px 0 -6px}
+  .gauge-wrap svg{width:100%;max-width:340px;height:auto}
+  .needle{transform-origin:160px 170px;transform:rotate(-90deg);
+    transition:transform 1.4s cubic-bezier(.2,.9,.25,1)}
+  .gauge-fill{transition:stroke-dashoffset 1.4s cubic-bezier(.2,.9,.25,1)}
+  .gauge-num{position:absolute;bottom:6px;left:0;right:0;text-align:center;
+    font-family:var(--mono);font-weight:600;font-size:52px;color:var(--cream);letter-spacing:-.02em}
+  .gauge-num span{font-size:20px;color:var(--cream-soft);margin-left:2px}
+  .gauge-label{text-align:center;font-family:var(--mono);font-size:11px;letter-spacing:.1em;
+    text-transform:uppercase;color:var(--cream-soft);margin-top:2px}
+  .gauge-hook{margin-top:18px;border-top:1px solid var(--asphalt-line);padding-top:14px;
+    font-family:var(--display);font-weight:700;font-size:19px;color:var(--cream);text-transform:uppercase}
+  .gauge-hook span{color:var(--accent)}
+
+  /* ============ PIPELINE (paper) ============ */
+  .pipeline{background:var(--paper);position:relative;padding:88px 0}
+  .pipeline .grid-light{position:absolute;inset:0}
+  .sec-head{position:relative;margin-bottom:52px}
+  .sec-eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.2em;text-transform:uppercase;
+    color:var(--accent);margin:0 0 12px}
+  .sec-title{font-family:var(--display);font-weight:800;font-size:clamp(28px,4vw,42px);
+    text-transform:uppercase;letter-spacing:-.01em;margin:0;color:var(--ink)}
+  .sec-title .num{color:var(--ink-soft);font-size:.55em;vertical-align:top}
+
+  .flow{position:relative;display:grid;grid-template-columns:repeat(6,1fr);gap:0}
+  @media (max-width:940px){.flow{grid-template-columns:repeat(3,1fr)}}
+  @media (max-width:620px){.flow{grid-template-columns:1fr}}
+  .fnode{position:relative;background:var(--paper);border:1px solid var(--paper-line-2);
+    padding:22px 18px 20px;text-align:left}
+  .flow .fnode:not(:last-child)::after{content:"→";position:absolute;top:50%;right:-11px;
+    transform:translateY(-50%);font-family:var(--mono);color:var(--ink-soft);font-size:15px;z-index:2;
+    background:var(--paper);width:22px;text-align:center}
+  @media (max-width:940px){.flow .fnode:nth-child(3n)::after{content:""}}
+  @media (max-width:620px){.flow .fnode::after{content:"↓"!important;right:50%;top:100%;
+    transform:translate(50%,-2px)}}
+  .fnode .fn{font-family:var(--mono);font-size:11px;color:var(--accent);letter-spacing:.06em}
+  .fnode h3{font-family:var(--display);font-weight:700;font-size:19px;text-transform:uppercase;
+    margin:6px 0 6px;color:var(--ink)}
+  .fnode p{font-size:13px;color:var(--ink-soft);margin:0;line-height:1.5}
+  .fnode .via{font-family:var(--mono);font-size:10.5px;color:var(--ink-soft);opacity:.75;
+    margin-top:10px;letter-spacing:.02em}
+
+  /* ============ DEMO (asphalt) ============ */
+  .demo{background:var(--asphalt);color:var(--cream);padding:96px 0;position:relative;overflow:hidden}
+  .demo::before{content:"";position:absolute;inset:0;
+    background:radial-gradient(900px 480px at 86% 100%,rgba(61,220,151,.08),transparent 60%);pointer-events:none}
+  .demo .sec-title{color:var(--cream)} .demo .sec-eyebrow{color:var(--accent)}
+  .device{position:relative;border:1px solid var(--asphalt-line-2);border-radius:10px;overflow:hidden;
+    background:var(--asphalt-2);box-shadow:0 40px 90px -40px rgba(0,0,0,.6)}
+  .device-bar{display:flex;align-items:center;gap:8px;padding:12px 16px;border-bottom:1px solid var(--asphalt-line);
+    background:#0D0F13}
+  .device-bar i{width:10px;height:10px;border-radius:50%;background:#262B35;display:block}
+  .device-bar .url{margin-left:12px;font-family:var(--mono);font-size:11.5px;color:var(--cream-soft)}
+  .device-body{aspect-ratio:16/9;display:grid;place-items:center;position:relative;
+    background:linear-gradient(160deg,#171A22,#0D0F13)}
+  .device-body .grid-dark{position:absolute;inset:0;opacity:.4}
+  .device-placeholder{position:relative;text-align:center;padding:24px}
+  .device-placeholder .ic{width:64px;height:64px;margin:0 auto 18px;border-radius:14px;
+    background:rgba(255,92,56,.14);border:1px solid rgba(255,92,56,.3);display:grid;place-items:center;
+    color:var(--accent);font-size:26px}
+  .device-placeholder b{display:block;font-family:var(--display);font-weight:700;font-size:20px;
+    text-transform:uppercase;color:var(--cream)}
+  .device-placeholder span{display:block;font-family:var(--mono);font-size:12px;color:var(--cream-soft);
+    margin-top:8px}
+  .device img{width:100%;height:100%;object-fit:cover}
+  .demo-cap{margin-top:18px;font-family:var(--mono);font-size:12.5px;color:var(--cream-soft);text-align:center}
+
+  /* ============ FEATURES (paper) ============ */
+  .features{background:var(--paper);padding:96px 0}
+  .fgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--paper-line-2);
+    border:1px solid var(--paper-line-2)}
+  @media (max-width:880px){.fgrid{grid-template-columns:repeat(2,1fr)}}
+  @media (max-width:560px){.fgrid{grid-template-columns:1fr}}
+  .fcard{background:var(--paper);padding:26px 24px}
+  .fcard .fi{font-family:var(--mono);font-size:11px;color:var(--accent);letter-spacing:.08em;
+    display:block;margin-bottom:10px}
+  .fcard h3{font-family:var(--display);font-weight:700;font-size:19px;text-transform:uppercase;
+    margin:0 0 8px;color:var(--ink)}
+  .fcard p{font-size:13.5px;color:var(--ink-soft);margin:0;line-height:1.55}
+  .fcard .stat{margin-top:14px;font-family:var(--mono);font-size:22px;color:var(--ink);
+    border-top:1px solid var(--paper-line);padding-top:12px}
+  .fcard .stat span{font-size:11px;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.06em;
+    display:block;margin-top:2px}
+
+  /* ============ STACK (asphalt) ============ */
+  .stack{background:var(--asphalt-2);padding:56px 0;border-top:1px solid var(--asphalt-line);
+    border-bottom:1px solid var(--asphalt-line)}
+  .stack .lbl{font-family:var(--mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase;
+    color:var(--cream-soft);margin:0 0 22px;text-align:center}
+  .chips{display:flex;flex-wrap:wrap;gap:12px;justify-content:center}
+  .chip{font-family:var(--mono);font-size:13px;color:var(--cream);border:1px solid var(--asphalt-line-2);
+    border-radius:3px;padding:8px 16px;letter-spacing:.01em}
+  .chip b{color:var(--accent);font-weight:600}
+
+  /* ============ FOOTER CTA ============ */
+  footer{background:var(--asphalt);color:var(--cream);padding:100px 0 48px;text-align:center;position:relative}
+  footer .grid-dark{position:absolute;inset:0;opacity:.4;
+    mask-image:radial-gradient(600px 300px at 50% 0%,black,transparent 75%)}
+  .foot-inner{position:relative}
+  footer h2{font-family:var(--display);font-weight:900;font-size:clamp(34px,5.5vw,58px);
+    text-transform:uppercase;letter-spacing:-.01em;margin:0 0 18px;line-height:.98}
+  footer h2 .grey{color:var(--cream-soft)}
+  footer .lede{margin:0 auto 34px;text-align:center}
+  .foot-links{display:flex;justify-content:center;gap:28px;margin-top:60px;padding-top:28px;
+    border-top:1px solid var(--asphalt-line);font-family:var(--mono);font-size:12px;
+    color:var(--cream-soft);flex-wrap:wrap}
+  .foot-links a{text-decoration:none;color:var(--cream-soft);transition:color .15s}
+  .foot-links a:hover{color:var(--accent)}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="navrow">
+    <a class="mark" href="#top">clip<i>•</i>per</a>
+    <div class="navlinks">
+      <a href="#how">How it works</a>
+      <a href="#features">Features</a>
+      <a href="https://github.com/Steezy-code/clipper" target="_blank" rel="noopener">Architecture ↗</a>
+      <a class="btn-gh" href="https://github.com/Steezy-code/clipper" target="_blank" rel="noopener">View on GitHub</a>
+    </div>
+  </div>
+</nav>
+
+<header class="hero" id="top">
+  <div class="grid-dark"></div>
+  <div class="wrap hero-inner">
+    <div>
+      <p class="eyebrow rv"><span class="dot"></span> local · free · runs on your gpu</p>
+      <h1 class="rv">Splice the<br>good parts.<br><span class="grey">Ship it yourself.</span></h1>
+      <p class="lede rv">Drop in a long video and get back <b>scored, captioned, vertical
+        shorts</b> — faster-whisper transcribes, a local Qwen3 model picks the moments,
+        OpenCV tracks the speaker. No upload, no API key required, no subscription.</p>
+      <div class="cta-row rv">
+        <a class="btn-gh" href="https://github.com/Steezy-code/clipper" target="_blank" rel="noopener">View on GitHub</a>
+        <a class="btn-ghost" href="#how">See how it works ↓</a>
+      </div>
+      <div class="hero-stats rv">
+        <div class="hstat"><b class="num">6</b><span>Pipeline stages</span></div>
+        <div class="hstat"><b class="num">3</b><span>Layouts</span></div>
+        <div class="hstat"><b class="num">0—100</b><span>Virality score</span></div>
+        <div class="hstat"><b class="num">$0</b><span>Cost to run</span></div>
+      </div>
+    </div>
+
+    <div class="gauge-card rv">
+      <div class="tag"><span>clip_01.mp4</span><b>PREDICTED VIRALITY</b></div>
+      <div class="gauge-wrap">
+        <svg viewBox="0 0 320 190" role="img" aria-label="Virality score gauge showing a score of 92 out of 100">
+          <defs>
+            <linearGradient id="gaugeGrad" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0" stop-color="#FF5C38"/>
+              <stop offset="1" stop-color="#FFB020"/>
+            </linearGradient>
+          </defs>
+          <g stroke="rgba(245,243,236,.22)" stroke-width="2">
+            <line x1="30" y1="170" x2="44" y2="170"/>
+            <line x1="72" y1="83" x2="83" y2="92"/>
+            <line x1="160" y1="40" x2="160" y2="54"/>
+            <line x1="248" y1="83" x2="237" y2="92"/>
+            <line x1="290" y1="170" x2="276" y2="170"/>
+          </g>
+          <path d="M 30 170 A 130 130 0 0 1 290 170" fill="none" stroke="rgba(245,243,236,.14)" stroke-width="14" stroke-linecap="round"/>
+          <path class="gauge-fill" id="gaugeFill" d="M 30 170 A 130 130 0 0 1 290 170" fill="none"
+                stroke="url(#gaugeGrad)" stroke-width="14" stroke-linecap="round"
+                stroke-dasharray="408.4" stroke-dashoffset="408.4"/>
+          <line class="needle" id="gaugeNeedle" x1="160" y1="170" x2="160" y2="55"
+                stroke="#F5F3EC" stroke-width="4" stroke-linecap="round"/>
+          <circle cx="160" cy="170" r="8" fill="#F5F3EC"/>
+        </svg>
+        <div class="gauge-num"><span class="num" id="gaugeNum">0</span><span>/100</span></div>
+      </div>
+      <p class="gauge-label">auto-scored on upload</p>
+      <div class="gauge-hook">"Your brain <span>can't</span> multitask"</div>
+    </div>
+  </div>
+</header>
+
+<section class="pipeline" id="how">
+  <div class="grid-light"></div>
+  <div class="wrap" style="position:relative">
+    <div class="sec-head rv">
+      <p class="sec-eyebrow">// how it works</p>
+      <h2 class="sec-title">Six stages, <span class="num">one</span> pass</h2>
+    </div>
+    <div class="flow rv">
+      <div class="fnode"><span class="fn">01 · LISTEN</span><h3>Transcribe</h3>
+        <p>Word-level timestamps from the source audio.</p>
+        <div class="via">via faster-whisper</div></div>
+      <div class="fnode"><span class="fn">02 · SELECT</span><h3>Score</h3>
+        <p>The model picks moments and scores each 0–100.</p>
+        <div class="via">via Qwen3 / Ollama</div></div>
+      <div class="fnode"><span class="fn">03 · TRIM</span><h3>Cut silence</h3>
+        <p>Dead air between words gets removed automatically.</p>
+        <div class="via">timestamp math</div></div>
+      <div class="fnode"><span class="fn">04 · REFRAME</span><h3>Track</h3>
+        <p>Speaker tracked into 9:16 with a smoothed camera.</p>
+        <div class="via">via OpenCV YuNet</div></div>
+      <div class="fnode"><span class="fn">05 · CAPTION</span><h3>Burn in</h3>
+        <p>Karaoke captions with a persistent hook headline.</p>
+        <div class="via">ASS + libass</div></div>
+      <div class="fnode"><span class="fn">06 · EXPORT</span><h3>Encode</h3>
+        <p>h264 / yuv420p / aac — plays anywhere, GPU-accelerated.</p>
+        <div class="via">via ffmpeg</div></div>
+    </div>
+  </div>
+</section>
+
+<section class="demo">
+  <div class="wrap">
+    <div class="sec-head rv">
+      <p class="sec-eyebrow">// see it run</p>
+      <h2 class="sec-title">A real clip, start to finish</h2>
+    </div>
+    <div class="device rv">
+      <div class="device-bar"><i></i><i></i><i></i><span class="url">localhost:8765</span></div>
+      <div class="device-body">
+        <div class="grid-dark"></div>
+        <!-- STAGE D: replace this placeholder with <img src="assets/demo.gif" alt="clipper demo"> -->
+        <div class="device-placeholder">
+          <div class="ic">▶</div>
+          <b>Demo capture pending</b>
+          <span>drop → transcribe → score → clips, recorded live</span>
+        </div>
+      </div>
+    </div>
+    <p class="demo-cap">Upload a video → clips appear as each one finishes rendering</p>
+  </div>
+</section>
+
+<section class="features" id="features">
+  <div class="wrap">
+    <div class="sec-head rv">
+      <p class="sec-eyebrow">// what it does</p>
+      <h2 class="sec-title">Built for the edit, not the demo</h2>
+    </div>
+    <div class="fgrid rv">
+      <div class="fcard"><span class="fi">[ layout ]</span><h3>Three layouts</h3>
+        <p>Single speaker, speaker-over-gameplay, or automatic Twitch facecam separation.</p>
+        <div class="stat">3<span>fill · split · stream</span></div></div>
+      <div class="fcard"><span class="fi">[ scoring ]</span><h3>Virality score</h3>
+        <p>Every clip is ranked 0–100 with a hook headline generated alongside it.</p>
+        <div class="stat">0—100<span>per clip</span></div></div>
+      <div class="fcard"><span class="fi">[ editing ]</span><h3>Silence trim</h3>
+        <p>Dead air between words is cut automatically — no manual scrubbing.</p>
+        <div class="stat">auto<span>on by default</span></div></div>
+      <div class="fcard"><span class="fi">[ motion ]</span><h3>Punch-in zoom</h3>
+        <p>A subtle camera tighten on emphasized words, tracked to the speaker.</p>
+        <div class="stat">8%<span>default punch</span></div></div>
+      <div class="fcard"><span class="fi">[ b-roll ]</span><h3>Auto B-roll</h3>
+        <p>Optional stock-footage cutaways on keyword moments, via a free Pexels key.</p>
+        <div class="stat">opt-in<span>no key, no cutaway</span></div></div>
+      <div class="fcard"><span class="fi">[ iterate ]</span><h3>Regenerate one clip</h3>
+        <p>Re-render a single clip with new settings without redoing the slow stages.</p>
+        <div class="stat">↻<span>reuses transcript</span></div></div>
+    </div>
+  </div>
+</section>
+
+<section class="stack">
+  <div class="wrap">
+    <p class="lbl">// tech stack</p>
+    <div class="chips">
+      <span class="chip"><b>faster-whisper</b> · transcription</span>
+      <span class="chip"><b>Ollama / Qwen3</b> · clip scoring</span>
+      <span class="chip"><b>OpenCV</b> · face tracking</span>
+      <span class="chip"><b>ffmpeg</b> · encode + captions</span>
+      <span class="chip"><b>FastAPI</b> · backend</span>
+      <span class="chip"><b>Vanilla JS</b> · no build step</span>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="grid-dark"></div>
+  <div class="wrap foot-inner rv">
+    <h2>Read the code.<br><span class="grey">Run it yourself.</span></h2>
+    <p class="lede" style="color:var(--cream-soft)">MIT-licensed, fully documented, and built
+      to run on hardware you already own.</p>
+    <a class="btn-gh" href="https://github.com/Steezy-code/clipper" target="_blank" rel="noopener">View on GitHub ↗</a>
+    <div class="foot-links">
+      <a href="https://github.com/Steezy-code/clipper" target="_blank" rel="noopener">Source</a>
+      <a href="https://github.com/Steezy-code/clipper/blob/master/ARCHITECTURE.md" target="_blank" rel="noopener">Architecture</a>
+      <a href="https://github.com/Steezy-code/clipper/blob/master/LICENSE" target="_blank" rel="noopener">MIT License</a>
+      <span>Built by Steezy-code</span>
+    </div>
+  </div>
+</footer>
+
+<script>
+(function(){
+  // reveal-on-scroll
+  var els = document.querySelectorAll('.rv');
+  if('IntersectionObserver' in window){
+    var io = new IntersectionObserver(function(entries){
+      entries.forEach(function(e){ if(e.isIntersecting){ e.target.classList.add('in'); io.unobserve(e.target); } });
+    }, {threshold:.15});
+    els.forEach(function(el){ io.observe(el); });
+  } else { els.forEach(function(el){ el.classList.add('in'); }); }
+
+  // hero gauge: sweep needle + count up to 92 on load
+  var SCORE = 92, ARC = 408.4;
+  function setGauge(v){
+    var angle = (v/100)*180 - 90;
+    document.getElementById('gaugeNeedle').style.transform = 'rotate(' + angle + 'deg)';
+    document.getElementById('gaugeFill').style.strokeDashoffset = ARC - (ARC*(v/100));
+  }
+  function countUp(){
+    var start = null, dur = 1400;
+    var numEl = document.getElementById('gaugeNum');
+    function step(ts){
+      if(!start) start = ts;
+      var p = Math.min(1, (ts-start)/dur);
+      var eased = 1 - Math.pow(1-p, 3);
+      numEl.textContent = Math.round(eased*SCORE);
+      if(p < 1) requestAnimationFrame(step);
+    }
+    requestAnimationFrame(step);
+  }
+  function runGaugeIntro(){
+    setTimeout(function(){ setGauge(SCORE); countUp(); }, 250);
+  }
+  // this script runs at the end of <body>, so window 'load' may have already fired by
+  // now (cached fonts/assets) - a listener attached after the fact would never run.
+  if(document.readyState === 'complete'){ runGaugeIntro(); }
+  else { window.addEventListener('load', runGaugeIntro); }
+  if(window.matchMedia('(prefers-reduced-motion: reduce)').matches){
+    setGauge(SCORE); document.getElementById('gaugeNum').textContent = SCORE;
+  }
+})();
+</script>
+</body>
+</html>
