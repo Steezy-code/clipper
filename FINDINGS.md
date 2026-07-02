@@ -82,7 +82,7 @@ Scanned all tracked files + git history.
 | Item | Result |
 |---|---|
 | `.env` / real API key in commits or history | **None** — `.env` never committed; no key blob in history |
-| Personal path `C:\Users\lwild\...` | **Found** in `docs/superpowers/plans/2026-06-23-quality-layer.md` and `.../specs/2026-06-23-quality-layer-design.md` — must scrub or remove |
+| Personal Windows home-directory path | **Found** in `docs/superpowers/plans/2026-06-23-quality-layer.md` and `.../specs/2026-06-23-quality-layer-design.md` — must scrub or remove |
 | Email / personal identifiers in tracked files | None found |
 | "Friend's channel" / Twitch/YouTube handles | **None found** in repo (nothing to scrub here) |
 | Secrets in README | Only the `PEXELS_API_KEY=your_key_here` **placeholder** — safe |

@@ -6,10 +6,6 @@ No upload, no cloud API, no subscription. faster-whisper listens, a local Qwen3 
 the moments, OpenCV tracks the speaker, ffmpeg cuts and burns the captions. Everything that
 makes an OpusClip-style tool useful, running on hardware you already own.
 
-<p align="center">
-  <img src="docs/media/demo.gif" alt="clipper turning a long video into a captioned vertical short, live in the browser" width="720">
-</p>
-
 ```
 Listen   →   Select   →   Trim   →   Reframe / Layout   →   Caption   →   Export
 Whisper      Qwen3         silence     face track            karaoke      ffmpeg

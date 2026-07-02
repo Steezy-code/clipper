@@ -21,8 +21,8 @@ Design language applied throughout:
 
 - [ ] Remove internal planning docs that embed the personal path:
       delete `docs/superpowers/` (plan + spec). *(They're process cruft, not portfolio
-      material, and the only source of `C:\Users\lwild\...` in the repo.)*
-- [ ] Re-scan tracked files for `lwild`, emails, absolute paths → confirm clean.
+      material, and the only source of a personal filesystem path in the repo.)*
+- [ ] Re-scan tracked files for the personal path, emails, absolute paths → confirm clean.
 - [ ] Verify `.gitignore` still covers `.venv/`, `__pycache__/`, `uploads//work//clips/`,
       `clipper/models/`, `brand.json`, `.env` (already good — confirm only).
 - [ ] Keep `FINDINGS.md` / `PLAN.md` out of the public tree? **Decision needed** (default:
@@ -34,8 +34,8 @@ the hygiene commit (files recoverable from history).
 ## Stage A — Premium README, ARCHITECTURE.md, LICENSE
 
 - [ ] `LICENSE` — MIT (confirm license choice).
-- [ ] `README.md` premium rewrite: one-line hook → demo GIF (placeholder until Stage D) →
-      "what it does" → mermaid architecture diagram → tech stack → feature list →
+- [ ] `README.md` premium rewrite: one-line hook → pipeline diagram (demo GIF deferred,
+      see Stage D) → "what it does" → mermaid architecture diagram → tech stack → feature list →
       quickstart (already solid, keep) → honest "why I built it."
 - [ ] `ARCHITECTURE.md` at repo root: refresh the stale `docs/architecture.md` to the current
       pipeline (adds hook+score, silence trim, punch-zoom, split/stream layouts, B-roll,
@@ -76,24 +76,27 @@ contracts unchanged. **Verification:** diff the `fetch`/FormData lines before/af
 they're identical; run one real job to confirm upload→status→clips still works. **Rollback:**
 `git checkout` the previous `index.html`.
 
-## Stage D — Demo assets
+## Stage D — Demo assets *(skipped by request)*
 
-- [ ] Capture steps (I'll give you an exact runbook): run a real short clip through the app,
-      screen-record the drop → progress → results, trim to ~8–12s, export an optimized GIF
-      (and an MP4 fallback).
-- [ ] Store under `docs/media/` (git-tracked, small/optimized) — **not** `clips/` (gitignored).
-- [ ] Wire the GIF into the README hero and the landing page demo section.
-- [ ] Use only non-sensitive source footage (your own content) for the recording.
+Deferred indefinitely — requires a screen recording only the user can capture. The README
+hero and landing page demo section were left graceful without it (no broken image links):
+the README leads with the pipeline diagram instead of a GIF, and the landing page's demo
+section already shows a styled placeholder frame, not a dead `<img>` tag.
 
-**Files:** `docs/media/**`, plus references in `README.md` + `landing/index.html`.
+To add it later: run a real clip through the app, screen-record drop → progress → results,
+trim to ~8–12s, export an optimized GIF, drop it at `docs/media/demo.gif` (README) and
+`landing/assets/demo.gif` (landing — swap the placeholder comment in `landing/index.html`'s
+`.device-body` for `<img src="assets/demo.gif" alt="clipper demo">`).
 **Pipeline risk:** none. **Rollback:** remove media + references.
 
 ## Stage E — Ship
 
-- [ ] Netlify deploy checklist (drag-drop `landing/` **or** connect the repo, publish dir
-      `landing/`).
-- [ ] Final public-safety pass (re-scan, confirm gitignore, confirm no secrets).
-- [ ] Deliver a 2–3 line **resume blurb** for clipper.
+- [x] Netlify deploy checklist (drag-drop `landing/` **or** connect the repo, publish dir
+      `landing/`) — delivered in chat; steps also live in `landing/README.md`.
+- [x] Final public-safety pass (re-scan, confirm gitignore, confirm no secrets) — clean;
+      also caught and redacted a personal path that had leaked into this plan's own audit
+      commentary (FINDINGS.md/PLAN.md quoting the Stage-0 finding verbatim).
+- [x] Deliver a 2–3 line **resume blurb** for clipper — delivered in chat.
 
 **Pipeline risk:** none.
 
