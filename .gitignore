@@ -17,3 +17,6 @@ brand.json
 
 # Local secrets (API keys) — never commit
 .env
+
+# Local Netlify folder
+.netlify
