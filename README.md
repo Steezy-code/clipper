@@ -1,111 +1,110 @@
 # clipper
 
-A local, **Ollama-powered** OpusClip alternative. Drop a long video → it transcribes,
-picks the strongest moments, scores them for virality, tracks the speaker into vertical,
-burns word-by-word karaoke captions with an auto hook headline, and hands you finished
-shorts. Nothing is uploaded; everything runs on your machine.
+**Drop in a long video. Get back scored, captioned, vertical shorts — entirely on your own machine.**
+
+No upload, no cloud API, no subscription. faster-whisper listens, a local Qwen3 model picks
+the moments, OpenCV tracks the speaker, ffmpeg cuts and burns the captions. Everything that
+makes an OpusClip-style tool useful, running on hardware you already own.
+
+<p align="center">
+  <img src="docs/media/demo.gif" alt="clipper turning a long video into a captioned vertical short, live in the browser" width="720">
+</p>
 
 ```
-Listen   →   Select   →   Reframe   →   Caption   →   Export
-Whisper      Ollama       face track    karaoke       ffmpeg
+Listen   →   Select   →   Trim   →   Reframe / Layout   →   Caption   →   Export
+Whisper      Qwen3         silence     face track            karaoke      ffmpeg
 ```
 
-## Start it (the two commands you'll use every time)
+## Why I built it
 
-Open a **new** PowerShell window in this folder, then:
+Every "AI clipper" I found was a subscription wrapper around an API call. I wanted the same
+outcome — transcript in, scored vertical shorts out — running fully local: my GPU, my
+transcript, my choice of model, nothing shipped off to a server per clip. Building it also
+meant getting hands-on with the parts that actually make these tools feel good or bad: face
+tracking that doesn't jitter, captions that land on the beat, and a scoring pass that's
+honest about what it can and can't judge.
+
+## What it does
+
+- **Transcribes** with word-level timestamps (faster-whisper, GPU-accelerated)
+- **Picks the strongest moments** with a local LLM (Qwen3 via Ollama) and scores each one
+  0–100 for short-form virality, with an auto-generated hook headline
+- **Trims silence** between words so clips feel tightly edited, no manual scrubbing
+- **Tracks the speaker** into 9:16 / 1:1 / 16:9 with a smoothed virtual camera (no jitter,
+  no lag) and a subtle punch-in zoom on emphasized words
+- **Three layouts** — single speaker (Fill), speaker over your own gameplay/B-roll (Split),
+  or automatic Twitch-style facecam/gameplay separation (Stream)
+- **Auto B-roll** — optional stock-footage cutaways from Pexels on keyword moments
+- **Burns karaoke captions** in three style presets, with keyword emphasis and the hook
+  headline baked in
+- **Regenerates a single clip** with new settings without re-running the slow stages
+- **Remembers your brand** — accent color, font, and default caption style saved once
+
+## Tech stack
+
+| Layer | Choice | Why |
+|---|---|---|
+| Transcription | [faster-whisper](https://github.com/SYSTRAN/faster-whisper) (ctranslate2) | Word-level timestamps, CUDA when available |
+| Clip selection | [Ollama](https://ollama.com) + Qwen3 | Local, swappable, no per-clip API cost |
+| Face tracking | OpenCV (YuNet) | Fast, no GPU required, bundled fallback (Haar cascade) |
+| Video | ffmpeg | The only non-Python dependency; does all the muscle work |
+| Backend | FastAPI | Small, typed, easy to read end to end |
+| Frontend | Vanilla JS, no build step | One HTML file, nothing to compile |
+
+See [ARCHITECTURE.md](ARCHITECTURE.md) for how the pipeline stages fit together and why.
+
+## Quickstart
+
+**You need:** Python 3.10+, ffmpeg on PATH, Ollama running with a model pulled. An NVIDIA
+GPU is optional but makes transcription and encoding much faster.
 
 ```powershell
-# 1. make sure Ollama is running (only needed once per reboot)
-ollama serve
+# one-time setup
+./setup.ps1          # macOS/Linux: chmod +x setup.sh && ./setup.sh
 
-# 2. start clipper
-.\.venv\Scripts\python.exe app.py
+# every time you run it
+ollama serve                          # once per reboot
+.\.venv\Scripts\python.exe app.py     # macOS/Linux: ./.venv/bin/python app.py
 ```
 
-Then open **<http://localhost:8765>** and drop a video. Finished clips land in the
-`clips\` folder. Press `Ctrl+C` in the terminal to stop it.
+Open **http://localhost:8765**, drop a video. Finished clips land in `clips/`.
 
-> Tip: if you just installed ffmpeg, open a **fresh** terminal first so Windows picks it
-> up on your PATH.
-
-For **auto B-roll**, get a free key at <https://www.pexels.com/api/>. Easiest: copy
-`.env.example` to `.env` and put your key there — it's gitignored and loaded automatically
-every launch:
+For **auto B-roll**, get a free key at [pexels.com/api](https://www.pexels.com/api/), copy
+`.env.example` to `.env`, and paste it in — gitignored, loaded automatically:
 ```
 PEXELS_API_KEY=your_key_here
 ```
-(Or set it per-session: `$env:PEXELS_API_KEY = Read-Host "key"` on Windows — `Read-Host`
-keeps it out of your shell history.)
 
-On macOS / Linux the run command is `./.venv/bin/python app.py`.
+## Controls
 
-## Controls (set per video, right under the drop zone)
+| Control | Options |
+|---|---|
+| Aspect | `9:16` (default), `1:1`, `16:9` |
+| Captions | `Karaoke`, `Boxed`, `Bold` |
+| Length | `Auto (15–60s)`, `Under 30s`, `30–60s`, `60–90s` |
+| Layout | `Fill`, `Split` (+ your background clip), `Stream` (auto facecam) |
+| Trim silence | On by default |
+| B-roll | Off by default, needs `PEXELS_API_KEY` |
+| Brand kit | Accent color, caption font, default style — saved once |
 
-- **Aspect** — `9:16` (default), `1:1`, or `16:9`
-- **Captions** — `Karaoke`, `Boxed` (bar behind text), or `Bold`
-- **Length** — `Auto (15–60s)`, `Under 30s`, `30–60s`, or `60–90s`
-- **Clips** — how many to cut (1–12)
-- **Layout** — `Fill` (single speaker), `Split` (talking head on top, your gameplay/B-roll clip on the bottom — reveals a background picker), or `Stream (auto facecam)` (detects a Twitch-style webcam box and stacks facecam over gameplay automatically). Stream falls back to Fill if no facecam is found.
-- **Trim silence** — on by default; collapses dead air between words so clips feel tightly edited
-- **B-roll** — off by default; cuts to relevant Pexels stock video on keyword moments (Fill layout only). Needs a free `PEXELS_API_KEY` (see below); without it, the checkbox is ignored. Writes a `clips/<name>.credits.txt` with attribution.
+Every clip shows a virality score and hook headline; hit **↻** on any card to re-render just
+that clip with new settings — it reuses the transcript, so it's fast.
 
-Each finished clip shows a virality score and an auto-generated hook headline. Hit the
-**↻** button on any clip to re-render just that one with the current settings (change the
-caption style or layout, then re-roll a single clip) — it reuses the transcript, so it's fast.
+## Tuning
 
-Open **Brand kit** under the controls to set your accent color, caption font, and default
-caption style once; it's saved to `brand.json` and applied to every future job.
-
-## First-time setup (only once)
-
-You need **Python 3.10+**, **ffmpeg**, and **Ollama** with a chat model pulled.
-
-**Windows**
-```powershell
-./setup.ps1
-```
-**macOS / Linux**
-```bash
-chmod +x setup.sh && ./setup.sh
-```
-
-The script makes a virtualenv, installs the Python deps, checks for ffmpeg, and pulls the
-Ollama model. The YuNet face-detection model downloads itself on first run. On an NVIDIA
-GPU, Whisper runs on CUDA automatically (the required CUDA runtime is in `requirements.txt`).
-
-## Tuning the important knobs
-
-Most things are now in the UI. For the rest, set environment variables before launching
-(or edit `clipper/config.py`):
-
-| Variable | Default | What it does |
-|---|---|---|
-| `CLIPPER_MODEL` | `qwen3:8b` | Ollama model that picks clips. `qwen3:14b` = better taste, slower, more VRAM. |
-| `WHISPER_MODEL` | `base.en` | `small.en` more accurate, `large-v3` best (slower). |
-| `DETECT_EVERY` | `6` | Run face detection every N frames. Higher = faster, slightly less precise tracking. |
-| `TRIM_SILENCE` | `1` | Remove dead air between words. Set `0` to keep pauses (e.g. for music). |
-| `SILENCE_MAX` | `0.5` | Gaps longer than this (seconds) get collapsed when trimming. |
-| `PUNCH_ZOOM` | `1` | Subtle zoom-in on emphasized words. Set `0` to disable motion. |
-| `ZOOM_AMOUNT` | `0.08` | Max extra zoom at a punch (0.08 = 8%). |
-| `SPLIT_RATIO` | `0.5` | Talking-head fraction of the frame in Split layout (top half). |
-| `PEXELS_API_KEY` | _(unset)_ | Free key from pexels.com/api; enables auto B-roll. |
-| `BROLL_MAX` | `3` | Max stock cutaways per clip. |
-| `BROLL_DUR` | `2.5` | Seconds per cutaway. |
-| `SMOOTH_ALPHA` | `0.12` | Camera glide. **Lower = smoother but laggier**, higher = snappier. |
-| `ACCENT_HEX` | `#FF5C38` | Active-word caption color. |
-| `USE_NVENC` | `1` | Set `0` to encode on CPU if you have no NVIDIA GPU. |
-
-The defaults favor speed. For higher quality at the cost of time, set
-`CLIPPER_MODEL=qwen3:14b` and `WHISPER_MODEL=small.en` (or `large-v3`). Transcription and
-clip-scoring don't run at the same instant, so a 12 GB card handles `large-v3` + `qwen3:14b`
-without fighting over VRAM.
+Most of it lives in the UI. The rest is env vars (or edit `clipper/config.py`) — see the
+full table in [ARCHITECTURE.md](ARCHITECTURE.md) and `docs/tuning.md` for troubleshooting
+jittery tracking, weak clip picks, and slow transcription.
 
 ## Honest limits
 
-- **Face tracking** assumes one main speaker. Crowds or fast cuts confuse it — raise
-  `SMOOTH_ALPHA` or fall back to center crop (see `docs/tuning.md`).
-- **Captions** need a font installed; the default is Arial. Swap via `FONT_NAME`.
-- Clip *taste* is only as good as the model. `qwen3:14b` is a noticeable step up over `8b`.
-- Single-user/local by design — it doesn't namespace output per job, so run one video at a time.
+- **Face tracking** assumes one main speaker; crowds or fast cuts confuse it.
+- **Captions** need a font installed locally — default is Arial, swap via `FONT_NAME`.
+- **Clip taste** is bounded by the model. `qwen3:14b` is a noticeable step up over the
+  default `8b` if you have the VRAM to spare.
+- **Single-user by design** — output isn't job-namespaced, so run one video at a time.
+- **B-roll needs a free Pexels key**; without one the toggle is a no-op, not an error.
 
-See `docs/architecture.md` for how the pieces fit and where to extend.
+## License
+
+[MIT](LICENSE)
