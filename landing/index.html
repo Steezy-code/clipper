@@ -19,6 +19,7 @@
     --display:"Big Shoulders Display", sans-serif;
     --body:"IBM Plex Sans", ui-sans-serif, sans-serif;
     --mono:"IBM Plex Mono", ui-monospace, monospace;
+    --ease-out:cubic-bezier(.23,1,.32,1); --ease-in-out:cubic-bezier(.77,0,.175,1);
   }
   *{box-sizing:border-box}
   html{scroll-behavior:smooth}
@@ -41,8 +42,17 @@
     background-size:44px 44px; background-position:-1px -1px}
 
   /* ---------- reveal ---------- */
-  .rv{opacity:0;transform:translateY(22px);transition:opacity .7s ease,transform .7s ease}
+  .rv{opacity:0;transform:translateY(22px);transition:opacity .6s var(--ease-out),transform .6s var(--ease-out)}
   .rv.in{opacity:1;transform:none}
+  /* staggered reveal for grid children once the group is in view */
+  .stagger > *{opacity:0;transform:translateY(16px);
+    transition:opacity .55s var(--ease-out),transform .55s var(--ease-out)}
+  .stagger.in > *{opacity:1;transform:none}
+  .stagger.in > :nth-child(2){transition-delay:.06s}
+  .stagger.in > :nth-child(3){transition-delay:.12s}
+  .stagger.in > :nth-child(4){transition-delay:.18s}
+  .stagger.in > :nth-child(5){transition-delay:.24s}
+  .stagger.in > :nth-child(6){transition-delay:.30s}
 
   /* ============ NAV ============ */
   nav{position:sticky;top:0;z-index:40;background:rgba(20,23,30,.92);backdrop-filter:blur(8px);
@@ -91,8 +101,10 @@
   .cta-row{display:flex;flex-wrap:wrap;gap:14px;margin-bottom:36px}
   .btn-ghost{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--asphalt-line-2);
     color:var(--cream);font-family:var(--mono);font-size:13px;letter-spacing:.02em;
-    padding:11px 20px;border-radius:3px;text-decoration:none;transition:border-color .15s,color .15s}
+    padding:11px 20px;border-radius:3px;text-decoration:none;
+    transition:border-color .15s,color .15s,transform .12s}
   .btn-ghost:hover{border-color:var(--accent);color:var(--accent)}
+  .btn-ghost:active{transform:scale(.97)}
   .cta-row .btn-gh{padding:12px 22px;font-size:16px}
   .hero-stats{display:flex;gap:32px;flex-wrap:wrap;padding-top:26px;border-top:1px solid var(--asphalt-line)}
   .hstat b{display:block;font-family:var(--mono);font-size:26px;color:var(--cream);letter-spacing:-.01em}
@@ -290,7 +302,7 @@
       <p class="sec-eyebrow">// how it works</p>
       <h2 class="sec-title">Six stages, <span class="num">one</span> pass</h2>
     </div>
-    <div class="flow rv">
+    <div class="flow stagger">
       <div class="fnode"><span class="fn">01 · LISTEN</span><h3>Transcribe</h3>
         <p>Word-level timestamps from the source audio.</p>
         <div class="via">via faster-whisper</div></div>
@@ -350,7 +362,7 @@
       <p class="sec-eyebrow">// what it does</p>
       <h2 class="sec-title">Built for the edit, not the demo</h2>
     </div>
-    <div class="fgrid rv">
+    <div class="fgrid stagger">
       <div class="fcard"><span class="fi">[ layout ]</span><h3>Three layouts</h3>
         <p>Single speaker, speaker-over-gameplay, or automatic Twitch facecam separation.</p>
         <div class="stat">3<span>fill · split · stream</span></div></div>
@@ -406,7 +418,7 @@
 <script>
 (function(){
   // reveal-on-scroll
-  var els = document.querySelectorAll('.rv');
+  var els = document.querySelectorAll('.rv, .stagger');
   if('IntersectionObserver' in window){
     var io = new IntersectionObserver(function(entries){
       entries.forEach(function(e){ if(e.isIntersecting){ e.target.classList.add('in'); io.unobserve(e.target); } });
