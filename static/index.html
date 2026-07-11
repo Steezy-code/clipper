@@ -18,6 +18,7 @@
     --body:"IBM Plex Sans", ui-sans-serif, sans-serif;
     --mono:"IBM Plex Mono", ui-monospace, monospace;
     --r:8px; --r-lg:10px;
+    --ease-out:cubic-bezier(.23,1,.32,1);
   }
   *{box-sizing:border-box}
   html{scroll-behavior:smooth}
@@ -62,18 +63,26 @@
     border:1.5px dashed var(--paper-line-2);border-radius:var(--r-lg);
     background:var(--paper-2);
     padding:56px 28px;cursor:pointer;position:relative;overflow:hidden;
-    transition:border-color .2s,transform .2s,box-shadow .2s,background .2s}
+    transition:border-color .2s,transform .2s var(--ease-out),box-shadow .2s,background .2s}
   .drop::after{content:"";position:absolute;inset:0;opacity:0;transition:opacity .25s;
     background:radial-gradient(420px 200px at 50% 0%, rgba(255,92,56,.10), transparent 70%)}
-  .drop:hover,.drop.over{border-color:var(--accent);transform:translateY(-2px);
+  .drop.over{border-color:var(--accent);transform:translateY(-2px);
     box-shadow:0 20px 50px -32px rgba(20,23,30,.35)}
-  .drop:hover::after,.drop.over::after{opacity:1}
+  .drop.over::after{opacity:1}
+  .drop:active{transform:scale(.99)}
   .drop:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
   .drop .ic{width:52px;height:52px;border-radius:12px;display:grid;place-items:center;
     margin-bottom:16px;font-size:22px;color:var(--accent);
     background:rgba(255,92,56,.10);border:1px solid rgba(255,92,56,.28);
-    transition:transform .25s}
-  .drop:hover .ic,.drop.over .ic{transform:scale(1.08) rotate(90deg)}
+    transition:transform .25s var(--ease-out)}
+  .drop.over .ic{transform:scale(1.08) rotate(90deg)}
+  /* hover lift only on real pointers — touch fires hover on tap */
+  @media (hover:hover) and (pointer:fine){
+    .drop:hover{border-color:var(--accent);transform:translateY(-2px);
+      box-shadow:0 20px 50px -32px rgba(20,23,30,.35)}
+    .drop:hover::after{opacity:1}
+    .drop:hover .ic{transform:scale(1.08) rotate(90deg)}
+  }
   .drop strong{font-family:var(--display);font-weight:700;font-size:19px;
     text-transform:uppercase;letter-spacing:-.005em;display:block;color:var(--ink)}
   .drop span{color:var(--ink-soft);font-size:13.5px;margin-top:6px;display:block}
@@ -87,8 +96,9 @@
   .seg{display:inline-flex;border:1px solid var(--paper-line-2);border-radius:6px;overflow:hidden;
     background:var(--paper-2)}
   .seg button{font-family:var(--mono);font-size:12.5px;color:var(--ink-soft);background:transparent;
-    border:0;padding:9px 15px;cursor:pointer;transition:background .15s,color .15s}
+    border:0;padding:9px 15px;cursor:pointer;transition:background .15s,color .15s,transform .12s}
   .seg button:hover{color:var(--ink)}
+  .seg button:active{transform:scale(.97)}
   .seg button.on{background:var(--accent);color:var(--paper);font-weight:600}
   #capStyle,#layout,#length,#numClips{font-family:var(--body);font-size:14px;color:var(--ink);
     background:var(--paper-2);border:1px solid var(--paper-line-2);border-radius:6px;padding:9px 12px}
@@ -154,9 +164,11 @@
   .results-head .count{font-size:13px;color:var(--ink-soft);font-family:var(--mono)}
   .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(196px,1fr));gap:18px}
   .card{background:var(--asphalt);border:1px solid var(--asphalt-line);border-radius:var(--r);
-    overflow:hidden;transition:border-color .2s,transform .2s;
-    animation:rise .5s both;box-shadow:0 18px 40px -30px rgba(20,23,30,.45)}
-  .card:hover{border-color:var(--asphalt-line-2);transform:translateY(-3px)}
+    overflow:hidden;transition:border-color .2s,transform .2s var(--ease-out);
+    animation:rise .5s var(--ease-out) both;box-shadow:0 18px 40px -30px rgba(20,23,30,.45)}
+  @media (hover:hover) and (pointer:fine){
+    .card:hover{border-color:var(--asphalt-line-2);transform:translateY(-3px)}
+  }
   .card video{width:100%;aspect-ratio:9/16;background:#000;display:block;object-fit:cover}
   .card .meta{padding:14px 14px 15px}
   .card .head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0 0 8px}
@@ -188,8 +200,9 @@
   .actions{display:flex;align-items:center;gap:8px}
   .regen{font-family:var(--mono);font-size:13px;font-weight:600;color:var(--cream-soft);
     background:transparent;border:1px solid var(--asphalt-line-2);border-radius:6px;padding:6px 10px;
-    cursor:pointer;line-height:1;transition:border-color .15s,color .15s}
+    cursor:pointer;line-height:1;transition:border-color .15s,color .15s,transform .12s}
   .regen:hover{border-color:var(--accent);color:var(--accent)}
+  .regen:active{transform:scale(.96)}
   .regen:disabled{opacity:.5;cursor:default}
 
   .note{margin-top:26px;color:var(--ink-soft);font-size:13px;font-family:var(--mono)}
