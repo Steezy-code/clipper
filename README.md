@@ -78,6 +78,7 @@ PEXELS_API_KEY=your_key_here
 | Aspect | `9:16` (default), `1:1`, `16:9` |
 | Captions | `Karaoke`, `Boxed`, `Bold` |
 | Length | `Auto (15–60s)`, `Under 30s`, `30–60s`, `60–90s` |
+| Clips | How many to cut, 1–12 (default 6) |
 | Layout | `Fill`, `Split` (+ your background clip), `Stream` (auto facecam) |
 | Trim silence | On by default |
 | B-roll | Off by default, needs `PEXELS_API_KEY` |
@@ -88,9 +89,11 @@ that clip with new settings — it reuses the transcript, so it's fast.
 
 ## Tuning
 
-Most of it lives in the UI. The rest is env vars (or edit `clipper/config.py`) — see the
-full table in [ARCHITECTURE.md](ARCHITECTURE.md) and `docs/tuning.md` for troubleshooting
-jittery tracking, weak clip picks, and slow transcription.
+Most of it lives in the UI. The rest is env vars — every one is listed with its default in
+`clipper/config.py`, and `docs/tuning.md` covers troubleshooting jittery tracking, weak clip
+picks, and slow transcription. UI jobs always send aspect, captions, length, clips, layout,
+trim and B-roll, overriding `TARGET_W`/`TARGET_H`, `CAPTION_STYLE`, `MIN_CLIP_S`/`MAX_CLIP_S`,
+`NUM_CLIPS`, `LAYOUT`, `TRIM_SILENCE` and `BROLL`; those env vars still set headless defaults.
 
 ## Honest limits
 
