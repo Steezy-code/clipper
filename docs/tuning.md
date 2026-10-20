@@ -9,17 +9,18 @@ detection in the moving average.
 - **Laggy / drifts behind the speaker** → raise it (`0.2`–`0.3`). Snappier, more jitter.
 - Default `0.12` suits a mostly-stationary talking head.
 
-To disable tracking entirely (pure center crop), set `SMOOTH_ALPHA=0` and the camera sits
-at frame center.
-
 ## Clip picks are weak
 
 This is the model's judgment, not the plumbing.
 
 - `CLIPPER_MODEL=qwen3:14b` — best instruction-following that still fits ~12 GB.
 - `CLIPPER_MODEL=gemma3:12b` — briefer, less likely to overthink long transcripts.
-- Widen the net with `NUM_CLIPS=10` and keep the best by eye.
-- Tighten length with `MIN_CLIP_S` / `MAX_CLIP_S`.
+- Widen the net with more clips and keep the best by eye.
+- Tighten length to the range you want.
+
+In the web UI, use the **Clips** (1–12) and **Length** controls; they override
+`NUM_CLIPS` and `MIN_CLIP_S` / `MAX_CLIP_S` on every job. The env vars only set the
+headless defaults.
 
 ## Transcription is slow or inaccurate
 
@@ -30,11 +31,14 @@ This is the model's judgment, not the plumbing.
 
 ## Captions
 
-- Color: `ACCENT_HEX=#39E0A4` (any hex).
+- Color: `ACCENT_HEX=#39E0A4` (any hex; default `#FF5C38`).
 - Size/position: `FONT_SIZE`, and `MarginV` in the `Pop` style inside `captions.py`.
 - Font: `FONT_NAME=Montserrat` — the font must be installed on the machine doing the
   ffmpeg burn.
 - Words per line: `WORDS_PER_CAPTION=3` for a punchier, faster cadence.
+
+In the web UI, set color and font in the **Brand kit** panel instead. A saved brand
+(`brand.json`) overrides `ACCENT_HEX` and `FONT_NAME`.
 
 ## No NVIDIA GPU
 
