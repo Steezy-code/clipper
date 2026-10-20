@@ -45,8 +45,8 @@ Each result: `{file, title, hook, reason, score, start, end, length}`. Files wri
 - All settings live in `config.py`; read from env so nothing is hard-coded in logic.
 - ffmpeg is the only non-Python dependency. Shell out through `ffmpeg_util` where possible.
 - No telemetry. Network calls: Ollama at `OLLAMA_URL` (localhost by default), the one-time
-  YuNet model download in `crop.py`, and the Pexels API only when B-roll is enabled
-  (`BROLL=1` + `PEXELS_API_KEY`, `broll.py`).
+  YuNet model download in `crop.py`, and the Pexels API only when B-roll is on
+  (`BROLL=1` or the UI B-roll toggle) and `PEXELS_API_KEY` is set (`broll.py`; fill layout only).
 
 ## Common commands
 
